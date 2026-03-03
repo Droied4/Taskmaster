@@ -4,7 +4,7 @@
 NAME        = taskmasterd 
 OS = $(shell uname)
 CC = c++
-CFLAGS = -Wall -Wextra -Werror -I $(INCLUDE_PATH) -MMD -MP
+CFLAGS = -Wall -Wextra -Werror -std=c++23 -I $(INCLUDE_PATH) -MMD -MP
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               SOURCES                                        #
