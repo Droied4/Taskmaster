@@ -14,8 +14,8 @@ SOURCES_PATH    = ./src
 INCLUDE_PATH	= ./inc
 OBJECTS_PATH    = ./obj
 
-HEADER = $(INCLUDE_PATH)/taskmaster.hpp 
-SOURCES = main.cpp 
+HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp
+SOURCES = main.cpp Server.cpp
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               OBJECTS                                        #
