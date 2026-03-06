@@ -6,6 +6,10 @@ OS = $(shell uname)
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++23 -I $(INCLUDE_PATH) -MMD -MP
 
+# ruta de las libs de LUA
+CFLAGS += -I/usr/include/lua5.4
+LDFLAGS = -llua
+
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               SOURCES                                        #
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
@@ -14,8 +18,8 @@ SOURCES_PATH    = ./src
 INCLUDE_PATH	= ./inc
 OBJECTS_PATH    = ./obj
 
-HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp
-SOURCES = main.cpp Server.cpp
+HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp $(INCLUDE_PATH)/ConfigParser.hpp $(INCLUDE_PATH)/common.hpp
+SOURCES = main.cpp Server.cpp ConfigParser.cpp
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               OBJECTS                                        #
@@ -44,12 +48,16 @@ all: header $(NAME)
 -include $(DEPS)
 $(NAME): $(OBJECTS)
 	@printf "$(CYAN)$@ Compiled$(NC)\n"
-	@$(CC) $(CFLAGS) $^ -o $(NAME)
+	@$(CC) $(CFLAGS) $^ -o $(NAME) $(LDFLAGS)
 
 $(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp $(HEADER) Makefile
 	@printf "$(CYAN)Compiling $@$(NC)\n";
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@ 
+
+debug: CFLAGS += -DDEBUG=1
+debug: re
+	@printf "$(YELLOW)DEBUG mode activated$(NC)\n"
 
 clean:
 	@printf "$(CYAN)Cleaning objects and libraries$(NC)\n";
@@ -80,4 +88,4 @@ header:
 	@printf "$(WHITE)  ᗣ $(BLUE) TUTA $(WHITE) • • • • • • •  $(NC)\n";
 	@echo
 
-.PHONY: all clean fclean re header
+.PHONY: all clean fclean re header debug
