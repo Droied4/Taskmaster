@@ -21,6 +21,8 @@
 *.so
 *.dylib
 *.dll
+.cache/
+compile_commands.json
 
 # Fortran module files
 *.mod
