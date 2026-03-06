@@ -1,7 +1,9 @@
-#include "taskmaster.hpp"
+#include "ConfigParser.hpp"
 
-int main(void)
-{
-	std::cout << "Hola mundo\n";
-	return (0);
+int main() {
+  ConfigParser parser;
+
+  std::map<std::string, ProgramConfig> config_map = parser.parse("config.lua");
+
+  return 0;
 }
