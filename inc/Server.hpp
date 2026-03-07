@@ -8,20 +8,23 @@
 # include <fcntl.h>
 # include <cstring>
 # include <sys/un.h>
+# include <sys/epoll.h>
+# include <strings.h>
 
 //no he testeado nada pero igual no esta acabado confia tuta
 
 class Server{
 	private:
+		int 				_epfd;
 		int 				_serv_fd;
 		struct sockaddr_un 	_serv_addr;
-		std::vector<int> 	_client_fd;
 
 		void setServerFd(int fd);
 
 	public:
-		static constexpr char SOCK_PATH[22] = "/tmp/taskmaster.sock";
-		static constexpr int BUFFER_SIZE = 1024;
+		static constexpr char 	SOCK_PATH[22] = "/tmp/taskmaster.sock";
+		static constexpr int 	BUFFER_SIZE = 1024;
+		static constexpr int 	EVENTS_SIZE = 64;
 
 		Server();
 		Server(const Server &obj);
@@ -29,8 +32,9 @@ class Server{
 		~Server();
 
 		void bindListen();
+		void run();
 		void acceptConnection(); 
-		void readData();
+		void readData(int fd);
 		void sendData();
 
 		int getServerFd() const;	

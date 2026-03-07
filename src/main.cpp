@@ -2,6 +2,8 @@
 
 int main(void)
 {
-	std::cout << "Hola mundo\n";
+	Server serv;
+
+	serv.run();
 	return (0);
 }

@@ -2,5 +2,6 @@
 # define TASKMASTER_HPP
 
 # include <iostream>
+# include "Server.hpp"
 
 #endif
