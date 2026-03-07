@@ -319,17 +319,16 @@ static int get_signal_from_lua(lua_State *L, const std::string &prog_name) {
 
   if (type == LUA_TSTRING) {
     static const std::unordered_map<std::string, int> signal_map = {
-        {"HUP", SIGHUP},   {"INT", SIGINT},
-        {"QUIT", SIGQUIT}, {"ILL", SIGILL},
-        {"TRAP", SIGTRAP}, {"ABRT", SIGABRT},
-        {"BUS", SIGBUS},   {"FPE", SIGFPE},
-        {"KILL", SIGKILL}, {"USR1", SIGUSR1},
-        {"SEGV", SIGSEGV}, {"USR2", SIGUSR2},
-        {"PIPE", SIGPIPE}, {"ALRM", SIGALRM},
-        {"TERM", SIGTERM}, {"CHLD", SIGCHLD},
-        {"CONT", SIGCONT}, {"STOP", SIGSTOP},
-        {"TSTP", SIGTSTP}, {"TTIN", SIGTTIN},
-        {"TTOU", SIGTTOU}}; // no se si faltan mas
+        {"HUP", SIGHUP},       {"INT", SIGINT},   {"QUIT", SIGQUIT},
+        {"ILL", SIGILL},       {"TRAP", SIGTRAP}, {"ABRT", SIGABRT},
+        {"BUS", SIGBUS},       {"FPE", SIGFPE},   {"KILL", SIGKILL},
+        {"USR1", SIGUSR1},     {"SEGV", SIGSEGV}, {"USR2", SIGUSR2},
+        {"PIPE", SIGPIPE},     {"ALRM", SIGALRM}, {"TERM", SIGTERM},
+        {"CHLD", SIGCHLD},     {"CONT", SIGCONT}, {"STOP", SIGSTOP},
+        {"TSTP", SIGTSTP},     {"TTIN", SIGTTIN}, {"TTOU", SIGTTOU},
+        {"URG", SIGURG},       {"XCPU", SIGXCPU}, {"XFSZ", SIGXFSZ},
+        {"VTALRM", SIGVTALRM}, {"PROF", SIGPROF}, {"WINCH", SIGWINCH},
+        {"IO", SIGIO},         {"PWR", SIGPWR},   {"SYS", SIGSYS}};
 
     std::string name = lua_tostring(L, -1);
     if (name.substr(0, 3) == "SIG")
