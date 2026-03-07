@@ -1,4 +1,5 @@
 #pragma once
+#include "Program.hpp"
 #include <iostream>
 #include <map>
 #include <string>
@@ -9,25 +10,6 @@ extern "C" {
 #include <lua.h>
 #include <lualib.h>
 }
-
-// esto es temporal uwu solo para probar la lectura de la conf hasta que hagamos
-// la clase Program
-struct ProgramConfig {
-  std::string cmd;
-  int numprocs;
-  mode_t umask;
-  std::string workingdir;
-  bool autostart;
-  std::string autorestart;
-  std::vector<int> exitcodes;
-  int startretries;
-  int starttime;
-  int stopsignal;
-  int stoptime;
-  std::string stdout_path;
-  std::string stderr_path;
-  std::map<std::string, std::string> env;
-};
 
 class ConfigParser {
 private:
