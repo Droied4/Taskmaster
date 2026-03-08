@@ -10,6 +10,7 @@
 # include <sys/un.h>
 # include <sys/epoll.h>
 # include <strings.h>
+# include "Logs.hpp"
 
 //no he testeado nada pero igual no esta acabado confia tuta
 

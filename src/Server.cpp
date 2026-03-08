@@ -5,10 +5,10 @@ Server::Server()
 	this->_serv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (this->_serv_fd < 0)
 	{
-		log::error << "Sever fd socket failed!\n";
+		Logs::error() << "Sever fd socket failed!\n";
 		exit(1); 
 	}
-	log::info << "Server Socket Created\n";
+	Logs::info() << "Server Socket Created\n";
   	bzero(&this->_serv_addr, sizeof(this->_serv_addr));
   	this->_serv_addr.sun_family = AF_UNIX;
   	strncpy(this->_serv_addr.sun_path, this->SOCK_PATH, sizeof(this->_serv_addr.sun_path) - 1);
@@ -20,7 +20,7 @@ Server::Server()
 	ev.data.fd = this->_serv_fd;
 	
 	epoll_ctl(this->_epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
-	log::debug << "Epoll Event created with server fd\n";
+	Logs::debug() << "Epoll Event created with server fd: " << this->_serv_fd << "\n";
 }
 
 Server::Server(const Server &obj)
@@ -53,19 +53,19 @@ int Server::getServerFd() const
 void Server::bindListen()
 {
 	unlink(SOCK_PATH);
-	log::debug << "Unlinked Sock Path: "<< SOCK_PATH << "\n";
+	Logs::debug() << "Unlinked Sock Path: "<< SOCK_PATH << "\n";
 	if (bind(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr), sizeof(this->_serv_addr)) < 0)
 	{
-		log::error << "Bind failed!\n";
+		Logs::error() << "Bind failed!\n";
 		exit(1);
 	}
-	log::info << "Server binded on route: "<< SOCK_PATH << "\n";
+	Logs::info() << "Server binded on route: "<< SOCK_PATH << "\n";
 	if (listen(this->_serv_fd, 0) < 0)
 	{
-		log::error << "Server listen failed!\n";
+		Logs::error() << "Server listen failed!\n";
 		exit(1);
 	}
-	log::info << "Server is now Listening!\n";
+	Logs::info() << "Server is now Listening!\n";
 }
 
 void Server::readData(int fd)
@@ -77,13 +77,13 @@ void Server::readData(int fd)
 	bytes = read(fd, buffer, BUFFER_SIZE);   
 	if (bytes <= 0)
 	{
-		log::info << "Client Disconnected : " << fd << "\n";
+		Logs::info() << "Client Disconnected : " << fd << "\n";
         epoll_ctl(this->_epfd, EPOLL_CTL_DEL, fd, nullptr);
 		close(fd);
 		return ;
 	}
 	buffer[bytes] = '\0';
-	log::debug << "Data read: " << buffer;
+	Logs::debug() << "Data read: " << buffer;
 }
 
 void Server::acceptConnection()
@@ -93,7 +93,7 @@ void Server::acceptConnection()
 	client_socket = accept(this->_serv_fd, nullptr, nullptr);
 	if (client_socket < 0)	
 	{
-		log::error << "Accept connection failed!\n";
+		Logs::error() << "Accept connection failed!\n";
 		exit(1);
 	}
 
@@ -105,7 +105,7 @@ void Server::acceptConnection()
 	ev.data.fd = client_socket; 
 	epoll_ctl(this->_epfd, EPOLL_CTL_ADD, client_socket, &ev);
 
-	log::info << "Client Connected: " << client_socket << "\n";
+	Logs::info() << "Client Connected: " << client_socket << "\n";
 	//Server::sendData();
 }
 

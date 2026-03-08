@@ -12,6 +12,13 @@ class Logs
     	Logs(const Logs&) = delete;
     	Logs& operator=(const Logs&) = delete;
 		~Logs();
+
+		enum class Level {
+		DEBUG = 0,
+		INFO,
+		WARNING,
+		ERROR
+		};
 	
 		static Logs& error();	
 		static Logs& warning();	
@@ -23,16 +30,13 @@ class Logs
 			std::cout << value;
 			return (*this);
 		}
+		void setMinLevel(Level level);
 	private:
 		Logs();
-
-		enum class Level {
-		ERROR,
-		WARNING,
-		INFO,
-		DEBUG
-		};
 	
+		Level _min_level;
+		bool enabled;
+
 		void printTimeStamp() const;	
 		void printLevel(Level level) const;
 		static Logs& getInstance();

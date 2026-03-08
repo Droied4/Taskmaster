@@ -31,6 +31,11 @@ void Logs::printLevel(Level level) const
 	}
 }
 
+void Logs::setMinLevel(Level level)
+{
+	this->_min_level = level;
+}
+
 Logs& Logs::operator<<(Level level)
 {
 	printTimeStamp();
