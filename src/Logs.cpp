@@ -1,7 +1,10 @@
 #include "Logs.hpp"
 
 Logs::Logs() 
-{}
+{
+	this->_min_level = Level::INFO;
+	this->_enabled = true;
+}
 
 Logs::~Logs() 
 {}
@@ -31,22 +34,36 @@ void Logs::printLevel(Level level) const
 	}
 }
 
+void Logs::setEnable()
+{
+	this->_enabled = true;
+}
+
 void Logs::setMinLevel(Level level)
 {
-	this->_min_level = level;
+	Logs& logger = getInstance();
+	logger._min_level = level;
+	logger.setEnable();
 }
 
 Logs& Logs::operator<<(Level level)
 {
-	printTimeStamp();
-	printLevel(level);
+	if (_min_level >= level)
+	{
+		_enabled = true;
+		printTimeStamp();
+		printLevel(level);
+	}
+	else 
+		_enabled = false;
 	return (*this);
 }
 
 Logs& Logs::operator<<(std::ostream& (*manip)(std::ostream&))
 {
+	if (_enabled)
         manip(std::cout);
-        return *this;
+    return *this;
 }
 
 Logs& Logs::error()

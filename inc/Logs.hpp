@@ -14,10 +14,10 @@ class Logs
 		~Logs();
 
 		enum class Level {
-		DEBUG = 0,
-		INFO,
+		ERROR = 0,
 		WARNING,
-		ERROR
+		INFO,
+		DEBUG 
 		};
 	
 		static Logs& error();	
@@ -27,20 +27,22 @@ class Logs
 		Logs& operator<<(std::ostream& (*manip)(std::ostream&));
 		template<typename T> Logs& operator<<(const T& value)
 		{
-			std::cout << value;
+			if (_enabled)
+				std::cout << value;
 			return (*this);
 		}
-		void setMinLevel(Level level);
+		static void setMinLevel(Level level);
 	private:
 		Logs();
 	
 		Level _min_level;
-		bool enabled;
+		bool _enabled;
 
 		void printTimeStamp() const;	
 		void printLevel(Level level) const;
 		static Logs& getInstance();
 		Logs& operator<<(Level level);
+		void setEnable();
 };
 
 #endif

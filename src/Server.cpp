@@ -9,6 +9,7 @@ Server::Server()
 		exit(1); 
 	}
 	Logs::info() << "Server Socket Created\n";
+	Logs::debug() << "Epoll Event created with server fd: " << this->_serv_fd << "\n";
   	bzero(&this->_serv_addr, sizeof(this->_serv_addr));
   	this->_serv_addr.sun_family = AF_UNIX;
   	strncpy(this->_serv_addr.sun_path, this->SOCK_PATH, sizeof(this->_serv_addr.sun_path) - 1);
@@ -20,7 +21,6 @@ Server::Server()
 	ev.data.fd = this->_serv_fd;
 	
 	epoll_ctl(this->_epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
-	Logs::debug() << "Epoll Event created with server fd: " << this->_serv_fd << "\n";
 }
 
 Server::Server(const Server &obj)
@@ -53,7 +53,7 @@ int Server::getServerFd() const
 void Server::bindListen()
 {
 	unlink(SOCK_PATH);
-	Logs::debug() << "Unlinked Sock Path: "<< SOCK_PATH << "\n";
+	Logs::debug() << "Unlinked Sock Path: " << SOCK_PATH << "\n";
 	if (bind(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr), sizeof(this->_serv_addr)) < 0)
 	{
 		Logs::error() << "Bind failed!\n";
