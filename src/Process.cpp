@@ -55,7 +55,7 @@ bool Process::spawn() {
   _pid = fork();
 
   if (_pid < 0) {
-    std::cerr << "Fork failed for process: " << _name << "\n";
+    Logs::error() << "Fork failed for process: " << _name << "\n";
     for (char *arg : argv)
       if (arg)
         free(arg);
@@ -70,7 +70,8 @@ bool Process::spawn() {
 
     if (!_config.workingdir.empty()) {
       if (chdir(_config.workingdir.c_str()) < 0) {
-        std::cerr << "Child: Failed to chdir to " << _config.workingdir << "\n";
+        Logs::error() << "Child: Failed to chdir to " << _config.workingdir
+                      << "\n";
         exit(1);
       }
     }
@@ -95,7 +96,7 @@ bool Process::spawn() {
 
     execvpe(argv[0], argv.data(), envp.data());
 
-    std::cerr << "Child: exec failed for " << argv[0] << "\n";
+    Logs::error() << "Child: exec failed for " << argv[0] << "\n";
     exit(1);
   }
 
@@ -109,16 +110,19 @@ bool Process::spawn() {
   _state = ProcessState::STARTING;
   _start_time = time(NULL);
 
-  std::cout << "[Process] Spawning " << _name << " with PID " << _pid << "\n";
+  Logs::debug() << "[Process] Spawning " << _name << " with PID " << _pid
+                << "\n";
   return true;
 }
 
 void Process::killProcess() {
   if (_pid > 0 &&
       (_state == ProcessState::RUNNING || _state == ProcessState::STARTING)) {
-    std::cout << "[Process] Sending signal " << _config.stopsignal << " to "
-              << _name << "\n";
+    Logs::debug() << "[Process] Sending signal " << _config.stopsignal << " to "
+                  << _name << "\n";
     kill(_pid, _config.stopsignal);
+    Logs::debug() << "[Process] " << _name << " killed with signal "
+                  << _config.stopsignal << "\n";
   }
 }
 
