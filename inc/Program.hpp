@@ -9,17 +9,17 @@
 class Process;
 
 struct ProgramConfig {
-  std::string cmd;
-  int numprocs;
-  mode_t umask;
-  std::string workingdir;
-  bool autostart;
-  std::string autorestart;
-  std::vector<int> exitcodes;
-  int startretries;
-  int starttime;
-  int stopsignal;
-  int stoptime;
+  std::string cmd = "";
+  int numprocs = 1;
+  mode_t umask = 022;
+  std::string workingdir = "";
+  bool autostart = false;
+  std::string autorestart = "unexpected";
+  std::vector<int> exitcodes = {0};
+  int startretries = 3;
+  int starttime = 1;
+  int stopsignal = 15;
+  int stoptime = 10;
   std::string stdout_path;
   std::string stderr_path;
   std::map<std::string, std::string> env;

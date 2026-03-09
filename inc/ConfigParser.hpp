@@ -17,6 +17,12 @@ private:
   lua_State *L;
 
   void parseProgramTable(const std::string &prog_name, ProgramConfig &cfg);
+  void parseUmask(const std::string &prog_name, ProgramConfig &cfg);
+  void parseExitCodes(const std::string &prog_name, ProgramConfig &cfg);
+  void parseEnv(const std::string &prog_name, ProgramConfig &cfg);
+  void setConfig(const std::string &key, const std::string &prog_name,
+                 ProgramConfig &cfg);
+
 #ifdef DEBUG
   void
   debug_dump_config(const std::map<std::string, ProgramConfig> &configs) const;
