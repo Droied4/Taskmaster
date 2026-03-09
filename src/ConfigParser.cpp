@@ -1,4 +1,5 @@
 #include "ConfigParser.hpp"
+#include "Logs.hpp"
 #include "common.hpp"
 #include <cassert>
 #include <csignal>
@@ -53,7 +54,12 @@ ConfigParser::parse(const std::string &filename) {
 
     std::string prog_name = lua_tostring(L, -2);
     ProgramConfig cfg;
+    Logs::debug() << "Parsing configuration for program: " << prog_name
+                  << std::endl;
     parseProgramTable(prog_name, cfg);
+    Logs::debug() << "Finished parsing configuration for program: " << prog_name
+                  << std::endl;
+    ;
     parsed_configs[prog_name] = cfg;
 
     lua_pop(L, 1);
@@ -65,6 +71,9 @@ ConfigParser::parse(const std::string &filename) {
   dump_stack(L);
   debug_dump_config(parsed_configs);
 #endif
+  Logs::info() << "Configuration parsed successfully with "
+               << parsed_configs.size() << " program(s) defined." << std::endl;
+  ;
   return parsed_configs;
 }
 

@@ -1,4 +1,4 @@
-// #include "Logs.hpp"
+#include "Logs.hpp"
 // #include "Server.hpp"
 
 // int main(int ac, char *av[])
@@ -35,6 +35,9 @@
 #include <vector>
 
 int main() {
+#ifdef DEBUG
+  Logs::setMinLevel(Logs::Level::LDEBUG);
+#endif
   ConfigParser parser;
   auto config_map = parser.parse("config.lua");
   std::vector<Program *> programs;

@@ -1,4 +1,5 @@
 #include "Program.hpp"
+#include "Logs.hpp"
 #include "Process.hpp"
 #include "common.hpp"
 #include <iostream>
