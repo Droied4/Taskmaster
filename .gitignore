@@ -38,6 +38,7 @@ compile_commands.json
 *.exe
 *.out
 *.app
+taskmaster*
 
 # debug information files
 *.dwo
