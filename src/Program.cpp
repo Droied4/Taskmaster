@@ -17,30 +17,30 @@ Program::Program(const std::string &name, const ProgramConfig &config)
 }
 
 Program::~Program() {
+  Logs::info() << "[Program] Cleaning up " << _name << "...\n";
   for (Process *p : _processes) {
     delete p;
-  } // o algo asi xd
+  }
   _processes.clear();
 }
 
 void Program::start() {
-  // hasta que tengamos los logs
-  std::cout << "[Program] Starting " << _name << " (" << _config.numprocs
-            << " processes)...\n";
+  Logs::info() << "[Program] Starting " << _name << " (" << _config.numprocs
+               << " processes)...\n";
   for (Process *p : _processes) {
     p->spawn();
   }
 }
 
 void Program::stop() {
-  // hasta que tengamos los logs
-  std::cout << "[Program] Stopping " << _name << "...\n";
+  Logs::info() << "[Program] Stopping " << _name << "...\n";
   for (Process *p : _processes) {
     p->killProcess();
   }
 }
 
 void Program::restart() {
+  Logs::info() << "[Program] Restarting " << _name << "...\n";
   stop();
   start();
 }
