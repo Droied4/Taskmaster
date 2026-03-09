@@ -4,6 +4,12 @@
     std::exit(1);                                                              \
   } while (0)
 
+#define ERROR(msg)                                                             \
+  do {                                                                         \
+    Logs::error() << msg << std::endl;                                         \
+    exit(1);                                                                   \
+  } while (0)
+
 #define ASSERT(condition, message)                                             \
   do {                                                                         \
     if (!(condition)) {                                                        \
