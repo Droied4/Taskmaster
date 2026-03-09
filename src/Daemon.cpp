@@ -12,7 +12,7 @@ ASSERT(EVENTS_SIZE > 0, "EVENTS_SIZE must be above 0");
   struct epoll_event events[EVENTS_SIZE];
   _serv.bindListen();
   while (42) {
-    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, -1);
+    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 500);
     for (int i = 0; i < nfds; ++i) {
       if (events[i].data.fd == _serv.getServerFd())
         _serv.acceptConnection(_epfd);
