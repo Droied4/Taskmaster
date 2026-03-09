@@ -18,8 +18,11 @@ SOURCES_PATH    = ./src
 INCLUDE_PATH	= ./inc
 OBJECTS_PATH    = ./obj
 
-HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp $(INCLUDE_PATH)/ConfigParser.hpp $(INCLUDE_PATH)/common.hpp $(INCLUDE_PATH)/Logs.hpp
-SOURCES = main.cpp Server.cpp ConfigParser.cpp Logs.cpp
+HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp \
+		 $(INCLUDE_PATH)/ConfigParser.hpp $(INCLUDE_PATH)/common.hpp \
+		 $(INCLUDE_PATH)/Program.hpp $(INCLUDE_PATH)/Process.hpp
+
+SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               OBJECTS                                        #
