@@ -19,23 +19,20 @@ private:
   struct sockaddr_un _serv_addr;
 
   void setServerFd(int fd);
-  void bindListen();
-  void readData(int fd);
-  void sendData();
 
 public:
   static constexpr char SOCK_PATH[22] = "/tmp/taskmaster.sock";
   static constexpr int BUFFER_SIZE = 1024;
-  static constexpr int EVENTS_SIZE = 64;
 
-  Server();
+  Server(int epfd);
   Server(const Server &obj);
   Server &operator=(const Server &obj);
   ~Server();
 
-  void run();
-  void acceptConnection();
-
+  void acceptConnection(int epfd);
+  void bindListen();
+  void readData(int fd, int epfd);
+  void sendData();
   int getServerFd() const;
 };
 
