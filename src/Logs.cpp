@@ -3,6 +3,7 @@
 Logs::Logs() {
   this->_min_level = Level::INFO;
   this->_enabled = true;
+  this->_err = false;
 }
 
 Logs::~Logs() {}
@@ -52,6 +53,10 @@ Logs &Logs::operator<<(Level level) {
     printLevel(level);
   } else
     _enabled = false;
+	if (level == Level::ERROR)	
+  		_err = true;
+	else
+		_err = false;
   return (*this);
 }
 

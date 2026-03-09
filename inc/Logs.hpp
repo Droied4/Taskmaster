@@ -21,7 +21,9 @@ public:
   Logs &operator<<(std::ostream &(*manip)(std::ostream &));
   template <typename T> Logs &operator<<(const T &value) {
     if (_enabled)
-      std::cout << value;
+		std::cout << value;
+	if (_err)
+		std::cerr << value;
     return (*this);
   }
   static void setMinLevel(Level level);
@@ -31,6 +33,7 @@ private:
 
   Level _min_level;
   bool _enabled;
+  bool _err;
 
   void printTimeStamp() const;
   void printLevel(Level level) const;
