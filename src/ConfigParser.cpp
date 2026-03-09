@@ -4,7 +4,7 @@
 #include <csignal>
 #include <functional>
 
-static int get_signal_from_lua(lua_State *L, const std::string &prog_name);
+static int getSignalFromLua(lua_State *L, const std::string &prog_name);
 
 ConfigParser::ConfigParser() {
   L = luaL_newstate();
@@ -53,7 +53,7 @@ ConfigParser::parse(const std::string &filename) {
 
     std::string prog_name = lua_tostring(L, -2);
     ProgramConfig cfg;
-    parse_program_table(prog_name, cfg);
+    parseProgramTable(prog_name, cfg);
     parsed_configs[prog_name] = cfg;
 
     lua_pop(L, 1);
@@ -69,8 +69,8 @@ ConfigParser::parse(const std::string &filename) {
 }
 
 // si ya se que es enorme pero es lo que hay por ahora xd
-void ConfigParser::parse_program_table(const std::string &prog_name,
-                                       ProgramConfig &cfg) {
+void ConfigParser::parseProgramTable(const std::string &prog_name,
+                                     ProgramConfig &cfg) {
   ASSERT(lua_istable(L, -1),
          "Value at top of stack is not a table for " + prog_name);
 
@@ -133,7 +133,7 @@ void ConfigParser::parse_program_table(const std::string &prog_name,
          cfg.starttime = lua_tointeger(L, -1);
        }},
       {"stopsignal",
-       [&]() { cfg.stopsignal = get_signal_from_lua(L, prog_name); }},
+       [&]() { cfg.stopsignal = getSignalFromLua(L, prog_name); }},
       {"stoptime",
        [&]() {
          if (lua_type(L, -1) != LUA_TNUMBER)
@@ -306,7 +306,7 @@ void ConfigParser::dump_stack(lua_State *L) {
 }
 #endif
 
-static int get_signal_from_lua(lua_State *L, const std::string &prog_name) {
+static int getSignalFromLua(lua_State *L, const std::string &prog_name) {
   int type = lua_type(L, -1);
 
   if (type == LUA_TNUMBER) {
