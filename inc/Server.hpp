@@ -11,9 +11,6 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <vector>
-
-// no he testeado nada pero igual no esta acabado confia tuta
 
 class Server {
 private:
@@ -22,6 +19,9 @@ private:
   struct sockaddr_un _serv_addr;
 
   void setServerFd(int fd);
+  void bindListen();
+  void readData(int fd);
+  void sendData();
 
 public:
   static constexpr char SOCK_PATH[22] = "/tmp/taskmaster.sock";
@@ -33,11 +33,8 @@ public:
   Server &operator=(const Server &obj);
   ~Server();
 
-  void bindListen();
   void run();
   void acceptConnection();
-  void readData(int fd);
-  void sendData();
 
   int getServerFd() const;
 };
