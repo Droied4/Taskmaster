@@ -16,7 +16,7 @@ private:
   // es el estado de Lua que se usa para cargar la config
   lua_State *L;
 
-  void parse_program_table(const std::string &prog_name, ProgramConfig &cfg);
+  void parseProgramTable(const std::string &prog_name, ProgramConfig &cfg);
 #ifdef DEBUG
   void
   debug_dump_config(const std::map<std::string, ProgramConfig> &configs) const;
