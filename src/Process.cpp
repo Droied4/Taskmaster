@@ -1,4 +1,5 @@
 #include "Process.hpp"
+#include "Logs.hpp"
 #include "common.hpp"
 #include <csignal>
 #include <cstring>
