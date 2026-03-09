@@ -1,5 +1,7 @@
 local config = {}
 
+config.tuqui = {}
+
 config.programs = {
 	nginx_server = {
 		cmd = "/usr/bin/nginx -g 'daemon off;'",
