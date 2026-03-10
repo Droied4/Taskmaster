@@ -2,12 +2,13 @@
 #                               Taskmaster                                     #
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
 NAME        = taskmasterd 
+NAME_CLIENT = taskmasterctl
+
 OS = $(shell uname)
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++23 -I $(INCLUDE_PATH) -MMD -MP
 
-# ruta de las libs de LUA
-CFLAGS += -I/usr/include/lua5.4
+LUA_INC = -I/usr/include/lua5.4
 LDFLAGS = -llua
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
@@ -15,7 +16,7 @@ LDFLAGS = -llua
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
 
 SOURCES_PATH    = ./src
-INCLUDE_PATH	= ./inc
+INCLUDE_PATH    = ./inc
 OBJECTS_PATH    = ./obj
 
 HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp \
@@ -31,7 +32,11 @@ SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Logs.cpp
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
 
 OBJECTS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.o})
-DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d})
+
+CLIENT_SOURCES = Cli.cpp
+OBJ_CLIENT = $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.o})
+
+DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d}) $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.d})
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               COLORS                                         #
@@ -48,17 +53,22 @@ NC=\033[0m # No color
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               MANDATORY RULES                                #
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
-all: header $(NAME)
+all: header $(NAME) $(NAME_CLIENT)
 
 -include $(DEPS)
+
 $(NAME): $(OBJECTS)
 	@printf "$(CYAN)$@ Compiled$(NC)\n"
 	@$(CC) $(CFLAGS) $^ -o $(NAME) $(LDFLAGS)
 
-$(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp $(HEADER) Makefile
+$(NAME_CLIENT): $(OBJ_CLIENT)
+	@printf "$(CYAN)Linking $@$(NC)\n"
+	@$(CC) $(CFLAGS) $^ -o $(NAME_CLIENT) -lreadline
+
+$(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp Makefile
 	@printf "$(CYAN)Compiling $@$(NC)\n";
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) -c $< -o $@ 
+	@$(CC) $(CFLAGS) $(LUA_INC) -c $< -o $@ 
 
 debug: CFLAGS += -DDEBUG=1
 debug: re
@@ -70,7 +80,7 @@ clean:
 
 fclean : clean
 	@printf "$(CYAN)Cleaning objects, libraries and executable$(NC)\n";
-	@rm -rf $(NAME)
+	@rm -rf $(NAME) $(NAME_CLIENT)
 
 re: fclean all 
 
@@ -78,8 +88,8 @@ header:
 	@echo
 	@echo
 	@printf "$(GREEN)\n";
-	@printf " ███████████                   █████                                         █████                      \n";
-	@printf "░█░░░███░░░█                  ░░███                                         ░░███                       \n";
+	@printf " ███████████                  █████                                          █████                    \n";
+	@printf "░█░░░███░░░█                  ░░███                                          ░░███                    \n";
 	@printf "░   ░███  ░   ██████    █████  ░███ █████ █████████████    ██████    █████  ███████    ██████  ████████ \n";
 	@printf "    ░███     ░░░░░███  ███░░   ░███░░███ ░░███░░███░░███  ░░░░░███  ███░░  ░░░███░    ███░░███░░███░░███\n";
 	@printf "    ░███      ███████ ░░█████  ░██████░   ░███ ░███ ░███   ███████ ░░█████   ░███    ░███████  ░███ ░░░ \n";
