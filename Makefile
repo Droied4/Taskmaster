@@ -33,10 +33,11 @@ SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Logs.cpp
 
 OBJECTS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.o})
 
-CLIENT_SOURCES = Cli.cpp
+CLIENT_SOURCES = Cli.cpp ResponseFormatter.cpp Shell.cpp Client.cpp
 OBJ_CLIENT = $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.o})
 
-DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d}) $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.d})
+DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d}) \
+	   $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.d})
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               COLORS                                         #
@@ -54,6 +55,10 @@ NC=\033[0m # No color
 #                               MANDATORY RULES                                #
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
 all: header $(NAME) $(NAME_CLIENT)
+
+client: header $(NAME_CLIENT)
+
+server: header $(NAME)
 
 -include $(DEPS)
 
@@ -103,4 +108,4 @@ header:
 	@printf "$(WHITE)  ᗣ $(BLUE) TUTA $(WHITE) • • • • • • •  $(NC)\n";
 	@echo
 
-.PHONY: all clean fclean re header debug
+.PHONY: all clean fclean re header debug client server
