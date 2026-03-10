@@ -1,20 +1,23 @@
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <readline/history.h>
-#include <readline/readline.h>
-#include <sstream>
-#include <string>
-#include <vector>
+#include "Cli.hpp"
 
-// hasta que conectemos con el server y ahi vamos a poder obtener la lista real
-// de programas y comandos
-const std::vector<std::string> commands = {
-    "start", "stop", "restart", "status", "reload", "exit", "quit", "help"};
-const std::vector<std::string> dummy_programs = {"nginx", "redis", "database",
-                                                 "ls", "worker"};
+Cli *Cli::instance = nullptr;
 
-char *command_generator(const char *text, int state) {
+Cli::Cli() : _prompt("\001\033[1;36m\002taskmaster> \001\033[0m\002") {
+  instance = this;
+
+  _commands = {"start",  "stop", "restart", "status",
+               "reload", "exit", "quit",    "help"};
+  _programs = {"nginx", "redis", "database", "ls", "worker"};
+
+  rl_attempted_completion_function = Cli::taskmaster_completion;
+}
+
+Cli::~Cli() {
+  clear_history();
+  instance = nullptr;
+}
+
+char *Cli::command_generator(const char *text, int state) {
   static size_t list_index;
   static int len;
 
@@ -23,8 +26,11 @@ char *command_generator(const char *text, int state) {
     len = strlen(text);
   }
 
-  while (list_index < commands.size()) {
-    const std::string &cmd = commands[list_index++];
+  if (!instance)
+    return nullptr;
+
+  while (list_index < instance->_commands.size()) {
+    const std::string &cmd = instance->_commands[list_index++];
     if (cmd.compare(0, len, text) == 0) {
       return strdup(cmd.c_str());
     }
@@ -32,7 +38,7 @@ char *command_generator(const char *text, int state) {
   return nullptr;
 }
 
-char *program_generator(const char *text, int state) {
+char *Cli::program_generator(const char *text, int state) {
   static size_t list_index;
   static int len;
 
@@ -41,8 +47,11 @@ char *program_generator(const char *text, int state) {
     len = strlen(text);
   }
 
-  while (list_index < dummy_programs.size()) {
-    const std::string &prog = dummy_programs[list_index++];
+  if (!instance)
+    return nullptr;
+
+  while (list_index < instance->_programs.size()) {
+    const std::string &prog = instance->_programs[list_index++];
     if (prog.compare(0, len, text) == 0) {
       return strdup(prog.c_str());
     }
@@ -50,9 +59,8 @@ char *program_generator(const char *text, int state) {
   return nullptr;
 }
 
-char **taskmaster_completion(const char *text, int start, int end) {
+char **Cli::taskmaster_completion(const char *text, int start, int end) {
   (void)end;
-
   rl_attempted_completion_over = 1;
 
   if (start == 0) {
@@ -68,24 +76,19 @@ char **taskmaster_completion(const char *text, int start, int end) {
       return rl_completion_matches(text, program_generator);
     }
   }
-
   return nullptr;
 }
 
-int main() {
-  rl_attempted_completion_function = taskmaster_completion;
-
-  const char *prompt = "\001\033[1;36m\002taskmaster> \001\033[0m\002";
-
-  char *line = nullptr;
-
+void Cli::run() {
   std::cout << "\033[1;35m╔══════════════════════╗\033[0m\n";
-  std::cout << "\033[1;35m║\033[0m    Taskmaster CLI \033[1;32m"
-               "\033[0m   \033[1;35m║\033[0m\n";
+  std::cout << "\033[1;35m║\033[0m    Taskmaster CLI \033[1;32m\033[0m   "
+               "\033[1;35m║\033[0m\n";
   std::cout << "\033[1;35m╚══════════════════════╝\033[0m\n";
   std::cout << "Use TAB for autocomplete. 'exit' to quit.\n\n";
 
-  while ((line = readline(prompt)) != nullptr) {
+  char *line = nullptr;
+
+  while ((line = readline(_prompt.c_str())) != nullptr) {
     std::string input(line);
 
     if (input.empty()) {
@@ -99,15 +102,16 @@ int main() {
     }
 
     add_history(line);
-
     std::cout << "Command registered for server: " << input << "\n";
 
     free(line);
   }
 
   std::cout << "\nTerminating CLI connection...\n";
+}
 
-  clear_history();
-
+int main() {
+  Cli taskmaster_cli;
+  taskmaster_cli.run();
   return 0;
 }

@@ -26,5 +26,7 @@ private:
 public:
   ConfigParser();
   ~ConfigParser();
+  ConfigParser(const ConfigParser &) = delete;
+  ConfigParser &operator=(const ConfigParser &) = delete;
   std::map<std::string, ProgramConfig> parse(const std::string &filename);
 };
