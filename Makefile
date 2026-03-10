@@ -26,7 +26,7 @@ HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp \
 SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp
 OBJECTS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.o})
 
-CLIENT_SOURCES = cli.cpp
+CLIENT_SOURCES = Cli.cpp
 OBJ_CLIENT = $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.o})
 
 DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d}) $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.d})
