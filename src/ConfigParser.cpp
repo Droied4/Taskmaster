@@ -5,8 +5,6 @@
 #include <csignal>
 #include <functional>
 
-static int getSignalFromLua(lua_State *L, const std::string &prog_name);
-
 ConfigParser::ConfigParser() {
   L = luaL_newstate();
   ASSERT(L != nullptr, "failed to create Lua state: Out of memory");
@@ -120,88 +118,122 @@ void ConfigParser::parseEnv(const std::string &prog_name, ProgramConfig &cfg) {
   }
 }
 
+void ConfigParser::parseString(const std::string &key,
+                               const std::string &prog_name, std::string &out) {
+  if (lua_type(L, -1) != LUA_TSTRING)
+    CONFIG_ERROR(prog_name, "'" + key + "' must be a string");
+  out = lua_tostring(L, -1);
+}
+
+void ConfigParser::parseInt(const std::string &key,
+                            const std::string &prog_name, int &out,
+                            bool check_pos) {
+  if (lua_type(L, -1) != LUA_TNUMBER)
+    CONFIG_ERROR(prog_name, "'" + key + "' must be a number");
+  out = lua_tointeger(L, -1);
+  if (check_pos && out <= 0)
+    CONFIG_ERROR(prog_name, "'" + key + "' must be positive");
+}
+
+void ConfigParser::parseBool(const std::string &key,
+                             const std::string &prog_name, bool &out) {
+  if (lua_type(L, -1) != LUA_TBOOLEAN)
+    CONFIG_ERROR(prog_name, "'" + key + "' must be a boolean");
+  out = lua_toboolean(L, -1);
+}
+
+void ConfigParser::parseAutoRestart(const std::string &prog_name,
+                                    ProgramConfig &cfg) {
+  parseString("autorestart", prog_name, cfg.autorestart);
+  if (cfg.autorestart != "always" && cfg.autorestart != "never" &&
+      cfg.autorestart != "unexpected") {
+    CONFIG_ERROR(prog_name,
+                 "'autorestart' must be 'always', 'never', or 'unexpected'");
+  }
+}
+
+const std::unordered_map<std::string, ConfigParser::ParserAction> &
+ConfigParser::getHandlers() {
+  static const std::unordered_map<std::string, ParserAction> handler = {
+      {"cmd", [](ConfigParser *s, const std::string &n,
+                 ProgramConfig &c) { s->parseString("cmd", n, c.cmd); }},
+      {"numprocs",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseInt("numprocs", n, c.numprocs, true);
+       }},
+      {"workingdir",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseString("workingdir", n, c.workingdir);
+       }},
+      {"autostart",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseBool("autostart", n, c.autostart);
+       }},
+      {"autorestart", [](ConfigParser *s, const std::string &n,
+                         ProgramConfig &c) { s->parseAutoRestart(n, c); }},
+      {"startretries",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseInt("startretries", n, c.startretries);
+       }},
+      {"starttime",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseInt("starttime", n, c.starttime);
+       }},
+      {"stopsignal",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         c.stopsignal = s->getSignalFromLua(s->L, n);
+       }},
+      {"stoptime",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseInt("stoptime", n, c.stoptime);
+       }},
+      {"stdout",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseString("stdout", n, c.stdout_path);
+       }},
+      {"stderr",
+       [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseString("stderr", n, c.stderr_path);
+       }},
+      {"umask", [](ConfigParser *s, const std::string &n,
+                   ProgramConfig &c) { s->parseUmask(n, c); }},
+      {"exitcodes", [](ConfigParser *s, const std::string &n,
+                       ProgramConfig &c) { s->parseExitCodes(n, c); }},
+      {"env", [](ConfigParser *s, const std::string &n, ProgramConfig &c) {
+         s->parseEnv(n, c);
+       }}};
+  return handler;
+}
+
 void ConfigParser::parseProgramTable(const std::string &prog_name,
                                      ProgramConfig &cfg) {
   ASSERT(lua_istable(L, -1),
          "Value at top of stack is not a table for " + prog_name);
 
+  const auto &handlers = getHandlers();
+
   lua_pushnil(L);
   while (lua_next(L, -2) != 0) {
     if (!lua_isstring(L, -2))
       CONFIG_ERROR(prog_name, "Key in program table must be a string");
-    std::string key = lua_tostring(L, -2);
 
+    std::string key = lua_tostring(L, -2);
     if (lua_isnil(L, -1))
       CONFIG_ERROR(prog_name, "Value for key '" + key + "' cannot be nil");
 
-    setConfig(key, prog_name, cfg);
+    auto it = handlers.find(key);
+    if (it != handlers.end()) {
+      it->second(this, prog_name, cfg);
+    } else {
+      CONFIG_ERROR(prog_name, "Unknown key '" + key + "'");
+    }
 
     lua_pop(L, 1);
   }
 
   if (cfg.cmd.empty()) {
-    CONFIG_ERROR(prog_name, "Required field 'cmd' is missing or set to nil.");
+    CONFIG_ERROR(prog_name, "Required field 'cmd' is missing.");
   }
-}
-
-void ConfigParser::setConfig(const std::string &key,
-                             const std::string &prog_name, ProgramConfig &cfg) {
-  auto checkString = [&](const std::string &key) {
-    if (lua_type(L, -1) != LUA_TSTRING)
-      CONFIG_ERROR(prog_name, "'" + key + "' must be a string");
-    return std::string(lua_tostring(L, -1));
-  };
-
-  auto checkInt = [&](const std::string &key) {
-    if (lua_type(L, -1) != LUA_TNUMBER)
-      CONFIG_ERROR(prog_name, "'" + key + "' must be a number");
-    return static_cast<int>(lua_tointeger(L, -1));
-  };
-
-  auto checkBool = [&](const std::string &key) {
-    if (lua_type(L, -1) != LUA_TBOOLEAN)
-      CONFIG_ERROR(prog_name, "'" + key + "' must be a boolean");
-    return static_cast<bool>(lua_toboolean(L, -1));
-  };
-
-  if (key == "cmd")
-    cfg.cmd = checkString(key);
-  else if (key == "numprocs") {
-    cfg.numprocs = checkInt(key);
-    if (cfg.numprocs <= 0)
-      CONFIG_ERROR(prog_name, "numprocs must be positive");
-  } else if (key == "workingdir")
-    cfg.workingdir = checkString(key);
-  else if (key == "autostart")
-    cfg.autostart = checkBool(key);
-  else if (key == "autorestart") {
-    cfg.autorestart = checkString(key);
-    if (cfg.autorestart != "always" && cfg.autorestart != "never" &&
-        cfg.autorestart != "unexpected") {
-      CONFIG_ERROR(prog_name,
-                   "'autorestart' must be 'always', 'never', or 'unexpected'");
-    }
-
-  } else if (key == "startretries")
-    cfg.startretries = checkInt(key);
-  else if (key == "starttime")
-    cfg.starttime = checkInt(key);
-  else if (key == "stopsignal")
-    cfg.stopsignal = getSignalFromLua(L, prog_name);
-  else if (key == "stoptime")
-    cfg.stoptime = checkInt(key);
-  else if (key == "stdout")
-    cfg.stdout_path = checkString(key);
-  else if (key == "stderr")
-    cfg.stderr_path = checkString(key);
-  else if (key == "umask")
-    parseUmask(prog_name, cfg);
-  else if (key == "exitcodes")
-    parseExitCodes(prog_name, cfg);
-  else if (key == "env")
-    parseEnv(prog_name, cfg);
-  else
-    CONFIG_ERROR(prog_name, "Unknown key '" + key + "'");
 }
 
 #ifdef DEBUG
@@ -292,7 +324,7 @@ void ConfigParser::dump_stack(lua_State *L) {
 }
 #endif
 
-static int getSignalFromLua(lua_State *L, const std::string &prog_name) {
+int ConfigParser::getSignalFromLua(lua_State *L, const std::string &prog_name) {
   int type = lua_type(L, -1);
 
   if (type == LUA_TNUMBER) {
