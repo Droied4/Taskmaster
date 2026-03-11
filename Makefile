@@ -22,9 +22,10 @@ OBJECTS_PATH    = ./obj
 HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp \
 		 $(INCLUDE_PATH)/ConfigParser.hpp $(INCLUDE_PATH)/common.hpp \
 		 $(INCLUDE_PATH)/Program.hpp $(INCLUDE_PATH)/Process.hpp \
-		 $(INCLUDE_PATH)/Logs.hpp $(INCLUDE_PATH)/Daemon.hpp
- 
-SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Logs.cpp Daemon.cpp
+		 $(INCLUDE_PATH)/Logs.hpp $(INCLUDE_PATH)/Daemon.hpp \
+		 $(INCLUDE_PATH)/Command.hpp
+
+SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Logs.cpp Daemon.cpp Command.cpp
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
