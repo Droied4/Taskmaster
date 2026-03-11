@@ -1,8 +1,9 @@
 #include "Server.hpp"
 
-Server::Server() 
+Server::Server(int epfd) 
 {
 	ASSERT(strlen(SOCK_PATH) > 0, "SOCK_PATH must be declared");
+	ASSERT(epfd > 0, "epfd not initialized");
 	this->_serv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (this->_serv_fd < 0)
 		ERROR("Sever fd socket failed!");
@@ -15,12 +16,11 @@ Server::Server()
 			sizeof(this->_serv_addr.sun_path) - 1);
 	this->_serv_addr.sun_path[sizeof(this->_serv_addr.sun_path) - 1] = '\0';
 
-	this->_epfd = epoll_create1(0);
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLRDHUP;
 	ev.data.fd = this->_serv_fd;
 
-	epoll_ctl(this->_epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
+	epoll_ctl(epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
 }
 
 Server::Server(const Server &obj) { *this = obj; }
@@ -49,7 +49,7 @@ void Server::bindListen() {
 	Logs::info() << "Server is now Listening!\n";
 }
 
-void Server::readData(int fd) {
+void Server::readData(int fd, int epfd) {
 	ASSERT(BUFFER_SIZE > 0, "BUFFER_SIZE must be above 0");
 	char buffer[BUFFER_SIZE + 1];
 	bzero(buffer, BUFFER_SIZE + 1);
@@ -57,8 +57,8 @@ void Server::readData(int fd) {
 
 	bytes = read(fd, buffer, BUFFER_SIZE);
 	if (bytes <= 0) {
-		Logs::info() << "Client Disconnected : " << fd << "\n";
-    epoll_ctl(this->_epfd, EPOLL_CTL_DEL, fd, nullptr);
+		Logs::info() << "Client Disconnected: " << fd << "\n";
+    epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
     close(fd);
     return;
   }
@@ -66,7 +66,7 @@ void Server::readData(int fd) {
   Logs::debug() << "Data read: " << buffer;
 }
 
-void Server::acceptConnection() {
+void Server::acceptConnection(int epfd) {
   int client_socket;
 
   client_socket = accept(this->_serv_fd, nullptr, nullptr);
@@ -79,22 +79,8 @@ void Server::acceptConnection() {
   struct epoll_event ev;
   ev.events = EPOLLIN | EPOLLRDHUP;
   ev.data.fd = client_socket;
-  epoll_ctl(this->_epfd, EPOLL_CTL_ADD, client_socket, &ev);
+  epoll_ctl(epfd, EPOLL_CTL_ADD, client_socket, &ev);
 
   Logs::info() << "Client Connected: " << client_socket << "\n";
   // Server::sendData();
-}
-
-void Server::run() {
-  struct epoll_event events[EVENTS_SIZE];
-  bindListen();
-  while (42) {
-    int nfds = epoll_wait(this->_epfd, events, EVENTS_SIZE, -1);
-    for (int i = 0; i < nfds; ++i) {
-      if (events[i].data.fd == this->_serv_fd)
-        acceptConnection();
-      else
-        readData(events[i].data.fd);
-    }
-  }
 }
