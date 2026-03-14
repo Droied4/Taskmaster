@@ -27,6 +27,8 @@ public:
   void reloadConfig();
   void shutdownAll();
 
+  void reap();
+
   std::string executeCommand(const std::string &cmd,
                              const std::vector<std::string> &params);
 };

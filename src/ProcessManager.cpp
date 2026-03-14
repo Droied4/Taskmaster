@@ -1,4 +1,5 @@
 #include "ProcessManager.hpp"
+#include <sys/wait.h>
 
 ProcessManager::ProcessManager(
     const std::map<std::string, ProgramConfig> &configs) {
@@ -85,6 +86,45 @@ void ProcessManager::reloadConfig() {
         _programs[name] = new Program(name, new_cfg);
         _programs[name]->start();
       }
+    }
+  }
+}
+
+void ProcessManager::shutdownAll() {
+  for (const auto &[name, prog] : _programs) {
+    prog->stop();
+  }
+}
+
+void ProcessManager::reap() {
+  int status;
+  pid_t pid;
+  while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    Process *proc = findProcessByPid(pid);
+
+    if (proc) {
+      if (WIFEXITED(status)) {
+        int exit_code = WEXITSTATUS(status);
+        Logs::info() << "[ProcessManager] PID " << pid << " ("
+                     << proc->getName() << ") exited with code " << exit_code
+                     << "\n";
+
+        // TODO: comaparar exit_code con el expected_exit_code del config para
+        // decidir si es EXITED o FATAL
+        proc->setState(ProcessState::EXITED);
+
+      } else if (WIFSIGNALED(status)) {
+        int signal_num = WTERMSIG(status);
+        Logs::info() << "[ProcessManager] PID " << pid << " ("
+                     << proc->getName() << ") was killed by signal "
+                     << signal_num << "\n";
+
+        proc->setState(ProcessState::FATAL);
+      }
+
+      // TODO: checkear el autorestart y el max_retries
+    } else {
+      Logs::warning() << "[ProcessManager] Reaped unknown PID: " << pid << "\n";
     }
   }
 }
