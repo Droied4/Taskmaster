@@ -1,8 +1,12 @@
 #include  "CommandParser.hpp"
 
-CommandParser::CommandParser(std::string input)
+CommandParser::CommandParser()
+{}
+
+CommandParser::~CommandParser() {}
+
+void CommandParser::setCommandParser(std::string input)
 {
-	//assert input
 	this->_command = getFirstParam(input);
 	this->_params = splitParams(input);
 	Logs::info() << "Command: " << this->_command << "\n";
@@ -11,8 +15,6 @@ CommandParser::CommandParser(std::string input)
 		std::cout << *it << " ";
 	std::cout << "\n";
 }
-
-CommandParser::~CommandParser() {}
 
 std::string CommandParser::getFirstParam(std::string input)
 {

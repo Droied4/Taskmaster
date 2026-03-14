@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include <cstddef>
 
 Server::Server(int epfd) 
 {
@@ -54,7 +55,7 @@ void Server::sendData(int client_socket, std::string message)
 	send(client_socket, message.c_str(), strlen(message.c_str()), 0);
 }
 
-void Server::readData(int fd, int epfd) {
+std::string Server::readData(int fd, int epfd) {
 	ASSERT(BUFFER_SIZE > 0, "BUFFER_SIZE must be above 0");
 	char buffer[BUFFER_SIZE + 1];
 	bzero(buffer, BUFFER_SIZE + 1);
@@ -65,10 +66,12 @@ void Server::readData(int fd, int epfd) {
 		Logs::info() << "Client Disconnected: " << fd << "\n";
     epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
     close(fd);
-    return;
+    return ("");
   }
   buffer[bytes] = '\0';
   Logs::debug() << "Data read: " << buffer;
+  std::string input(buffer);
+  return (input); 
 }
 
 void Server::acceptConnection(int epfd) {
