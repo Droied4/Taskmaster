@@ -1,82 +1,124 @@
 #include "Command.hpp"
+#include "Process.hpp"
+#include <csignal>
 
-Command::Command(std::string name)
-{
-	this->_name = name;
+static std::string stateToString(ProcessState state) {
+
+  switch (state) {
+  case ProcessState::STOPPED:
+    return "STOPPED";
+  case ProcessState::STARTING:
+    return "STARTING";
+  case ProcessState::RUNNING:
+    return "RUNNING";
+  case ProcessState::BACKOFF:
+    return "BACKOFF";
+  case ProcessState::EXITED:
+    return "EXITED";
+  case ProcessState::FATAL:
+    return "FATAL";
+  default:
+    return "UNKNOWN";
+  }
 }
 
-Command::~Command()
-{}
+Command::Command(std::string name) : _name(name) {}
 
-//Start a proccess
-Start::Start() : Command("START") {}
+Command::~Command() {}
 
-void Start::execute(std::string param) 
-{
-	std::cout << "Start " << param << " proccess\n";
+Start::Start() : Command("start") {}
+
+std::string Start::execute(std::map<std::string, Program *> &programs,
+                           const std::string &target) {
+  auto it = programs.find(target);
+
+  if (it != programs.end()) {
+    it->second->start();
+    return target + ": started\n";
+  }
+  return target + ": ERROR (no such process)\n";
 }
 
-//Stop a proccess
-Stop::Stop() : Command("STOP") {}
+Stop::Stop() : Command("stop") {}
 
-void Stop::execute(std::string param) 
-{
-	std::cout << "Stop " << param << " proccess\n";
+std::string Stop::execute(std::map<std::string, Program *> &programs,
+                          const std::string &target) {
+  auto it = programs.find(target);
+  if (it != programs.end()) {
+    it->second->stop();
+    return target + ": stopped\n";
+  }
+  return target + ": ERROR (no such process)\n";
 }
 
-//Restart a process
-Restart::Restart() : Command("RESTART") {}
+Status::Status() : Command("status") {}
 
-void Restart::execute(std::string param) 
-{
-	std::cout << "Restart " << param << " proccess\n";
+std::string Status::execute(std::map<std::string, Program *> &programs,
+                            const std::string &target) {
+
+  std::string result = "";
+
+  if (target.empty() || target == "all") {
+    if (programs.empty())
+      return "No programs configured\n";
+
+    for (const auto &[prog_name, prog] : programs) {
+      for (Process *proc : prog->getProcesses()) {
+        result +=
+            proc->getName() + " | " + stateToString(proc->getState()) +
+            " | PID: " +
+            (proc->getPid() > 0 ? std::to_string(proc->getPid()) : "N/A") +
+            "\n";
+      }
+    }
+    return result;
+  }
+
+  auto it = programs.find(target);
+
+  if (it != programs.end()) {
+    for (Process *proc : it->second->getProcesses()) {
+      result += proc->getName() + " | " + stateToString(proc->getState()) +
+                " | PID: " +
+                (proc->getPid() > 0 ? std::to_string(proc->getPid()) : "N/A") +
+                "\n";
+    }
+    return result;
+  }
+
+  return "Error: Program `" + target + "` not found\n";
 }
 
-//Reload the config file
-Reload::Reload() : Command("RELOAD") {}
+Restart::Restart() : Command("restart") {}
 
-void Reload::execute(std::string param) 
-{
-	(void)param;
-	std::cout << "Reload config file \n";
+std::string Restart::execute(std::map<std::string, Program *> &programs,
+                             const std::string &target) {
+  auto it = programs.find(target);
+  if (it != programs.end()) {
+    it->second->restart();
+    return target + ": restarted\n";
+  }
+  return "" + target + ": ERROR (no such process)\n";
 }
 
-//Show the status of the proccess
-Status::Status() : Command("STATUS") {}
+Reload::Reload() : Command("reload") {}
 
-void Status::execute(std::string param) 
-{
-	(void)param;
-	std::cout << "show status of all proccess\n";
+std::string Reload::execute(std::map<std::string, Program *> &programs,
+                            const std::string &target) {
+  (void)programs;
+  (void)target;
+
+  kill(getpid(), SIGHUP);
+  return "taskmasterd: reloading configuration...\n";
 }
 
-//Shutdown taskmasterd
-Exit::Exit() : Command("EXIT") {}
+Shutdown::Shutdown() : Command("shutdown") {}
 
-void Exit::execute(std::string param) 
-{
-	(void)param;
-	std::cout << "exit from supervisorctl\n";
-}
-//Shutdown taskmasterctl
-Quit::Quit() : Command("QUIT") {}
+std::string Shutdown::execute(std::map<std::string, Program *> &programs,
+                              const std::string &target) {
+  (void)programs;
+  (void)target;
 
-void Quit::execute(std::string param) 
-{
-	(void)param;
-	std::cout << "exit from supervisorctl\n";
-}
-//Display help
-Help::Help() : Command("HELP") {}
-
-void Help::execute(std::string param) 
-{
- 	if (param.empty())
-		std::cout << "Available commands:\n"
-            << "  start <name>   - Start a process\n"
-            << "  stop <name>    - Stop a process\n"
-            << "  restart <name> - Restart a process\n"
-            << "  status         - Show process status\n"
-            << "  reload         - Reload configuration file\n"
-            << "  exit/quit      - Close this terminal\n";
+  kill(getpid(), SIGTERM);
+  return "taskmasterd: shutting down...\n";
 }
