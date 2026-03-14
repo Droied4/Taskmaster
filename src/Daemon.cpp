@@ -3,7 +3,8 @@
 #include <csignal>
 #include <sys/signalfd.h>
 
-Daemon::Daemon() : _epfd(epoll_create1(0)), _serv(_epfd) {}
+Daemon::Daemon(ProcessManager &obj) : _epfd(epoll_create1(0)), _serv(_epfd), _manager(obj) {
+}
 
 Daemon::~Daemon() {}
 
@@ -30,17 +31,20 @@ void Daemon::setupSignals() {
   epoll_ctl(_epfd, EPOLL_CTL_ADD, _sig_fd, &ev);
 }
 
-void Daemon::run() {
+void Daemon::run() 
+{
   ASSERT(EVENTS_SIZE > 0, "EVENTS_SIZE must be above 0");
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
   _serv.bindListen();
+
   while (42) {
     int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 500);
     for (int i = 0; i < nfds; ++i) {
-      if (events[i].data.fd == _serv.getServerFd())
+  		int client_socket = events[i].data.fd;
+      if (client_socket == _serv.getServerFd())
         _serv.acceptConnection(_epfd);
-      else if (events[i].data.fd == _sig_fd) { // llega una nueva signal
+      else if (client_socket == _sig_fd) { // llega una nueva signal
         struct signalfd_siginfo fdsi;
 
         ssize_t s = read(_sig_fd, &fdsi, sizeof(struct signalfd_siginfo));
@@ -60,14 +64,11 @@ void Daemon::run() {
           }
         }
       } else {
-        _serv.readData(events[i].data.fd,
-                       this->_epfd); // agarra el input raw
-                                     //
-                                     // parser command
-                                     //
-                                     // _manager.executeCommand(cmd, params);
-                                     //
-                                     // _serv.sendData
+		std::string input = _serv.readData(client_socket,
+                       this->_epfd);
+		_cparser.setCommandParser(input);
+		std::string output = _manager.executeCommand(_cparser.getCommand(), _cparser.getParams());
+        _serv.sendData(client_socket, output);
       }
     }
   }

@@ -13,11 +13,12 @@ class CommandParser {
 		std::vector<std::string> splitParams(std::string input);
 
 	public:
-		CommandParser(std::string input);
+		CommandParser();
   		CommandParser(const CommandParser &) = delete;
   		CommandParser &operator=(const CommandParser &) = delete;
 		~CommandParser();
 
+		void setCommandParser(std::string input);
 		std::string getCommand() const;
 		std::vector<std::string> getParams() const;
 };
