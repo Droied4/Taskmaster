@@ -131,3 +131,5 @@ pid_t Process::getPid() const { return _pid; }
 ProcessState Process::getState() const { return _state; }
 
 const std::string &Process::getName() const { return _name; }
+
+void Process::setState(ProcessState state) { this->_state = state; }

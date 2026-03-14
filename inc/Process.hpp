@@ -33,4 +33,5 @@ public:
   pid_t getPid() const;
   ProcessState getState() const;
   const std::string &getName() const;
+  void setState(ProcessState);
 };
