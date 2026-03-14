@@ -2,7 +2,6 @@
 #include "Logs.hpp"
 #include "Process.hpp"
 #include "common.hpp"
-#include <iostream>
 
 Program::Program(const std::string &name, const ProgramConfig &config)
     : _name(name), _config(config) {
@@ -54,3 +53,7 @@ void Program::monitor() {
 const std::string &Program::getName() const { return _name; }
 
 const ProgramConfig &Program::getConfig() const { return _config; }
+
+const std::vector<Process *> &Program::getProcesses() const {
+  return _processes;
+}

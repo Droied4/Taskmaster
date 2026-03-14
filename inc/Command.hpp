@@ -1,74 +1,63 @@
 #pragma once
 
-#include <iostream>
 #include "Logs.hpp"
+#include "Program.hpp"
+#include <iostream>
+
+class ProcessManager;
 
 class Command {
-	private:
-		bool _connected;	
-	protected:
-		std::string _name;
-	public:
-		Command(std::string name);
-		Command(const Command& obj) = delete;
-		Command& operator=(const Command& obj) = delete;
-		virtual ~Command();
+protected:
+  std::string _name;
 
-		virtual void execute(std::string param) = 0;
+public:
+  Command(std::string name);
+  Command(const Command &obj) = delete;
+  Command &operator=(const Command &obj) = delete;
+  virtual ~Command();
+
+  virtual std::string execute(std::map<std::string, Program *> &programs,
+                              const std::string &target) = 0;
 };
 
-class Start : public Command
-{
-	public:
-		Start();
-		void execute(std::string param);
+class Start : public Command {
+public:
+  Start();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };
 
-class Stop : public Command
-{
-	public:
-		Stop();
-		void execute(std::string param);
+class Stop : public Command {
+public:
+  Stop();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };
 
-class Reload : public Command
-{
-	public:
-		Reload();
-		void execute(std::string param);
+class Reload : public Command {
+public:
+  Reload();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };
 
-class Status : public Command
-{
-	public:
-		Status();
-		void execute(std::string param);
+class Status : public Command {
+public:
+  Status();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };
 
-class Restart : public Command
-{
-	public:
-		Restart();
-		void execute(std::string param);
+class Restart : public Command {
+public:
+  Restart();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };
 
-class Exit : public Command
-{
-	public:
-		Exit();
-		void execute(std::string param);
-};
-
-class Quit : public Command
-{
-	public:
-		Quit();
-		void execute(std::string param);
-};
-
-class Help : public Command
-{
-	public:
-		Help();
-		void execute(std::string param);
+class Shutdown : public Command {
+public:
+  Shutdown();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
 };

@@ -23,6 +23,20 @@ struct ProgramConfig {
   std::string stdout_path;
   std::string stderr_path;
   std::map<std::string, std::string> env;
+
+  bool operator==(const ProgramConfig &other) const {
+    return cmd == other.cmd && numprocs == other.numprocs &&
+           umask == other.umask && workingdir == other.workingdir &&
+           autostart == other.autostart && autorestart == other.autorestart &&
+           exitcodes == other.exitcodes && startretries == other.startretries &&
+           starttime == other.starttime && stopsignal == other.stopsignal &&
+           stoptime == other.stoptime && stdout_path == other.stdout_path &&
+           stderr_path == other.stderr_path && env == other.env;
+  }
+
+  bool operator!=(const ProgramConfig &other) const {
+    return !(*this == other);
+  }
 };
 
 class Program {
@@ -35,17 +49,15 @@ public:
   Program(const std::string &name, const ProgramConfig &config);
   ~Program();
 
-  // con esto evitamos que se puedan copiar o asignar programas. cada Program es
-  // unico
   Program(const Program &) = delete;
   Program &operator=(const Program &) = delete;
 
   void start();
   void stop();
   void restart();
-  void monitor(); // verificar estado de los hijos y aplicar el autorestart si
-                  // es necesario
+  void monitor();
 
   const std::string &getName() const;
   const ProgramConfig &getConfig() const;
+  const std::vector<Process *> &getProcesses() const;
 };
