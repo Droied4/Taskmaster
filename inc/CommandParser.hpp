@@ -1,0 +1,23 @@
+#pragma once
+
+#include <string>
+#include "Logs.hpp"
+#include <vector>
+
+class CommandParser {
+	private:
+		std::string _command;
+		std::vector<std::string> _params;
+
+		std::string getFirstParam(std::string input);
+		std::vector<std::string> splitParams(std::string input);
+
+	public:
+		CommandParser(std::string input);
+  		CommandParser(const CommandParser &) = delete;
+  		CommandParser &operator=(const CommandParser &) = delete;
+		~CommandParser();
+
+		std::string getCommand() const;
+		std::vector<std::string> getParams() const;
+};
