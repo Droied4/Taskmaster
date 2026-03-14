@@ -32,7 +32,7 @@ public:
   void acceptConnection(int epfd);
   void bindListen();
   void readData(int fd, int epfd);
-  void sendData();
+  void sendData(int client_socket, std::string message);
   int getServerFd() const;
 };
 

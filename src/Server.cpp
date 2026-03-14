@@ -49,6 +49,11 @@ void Server::bindListen() {
 	Logs::info() << "Server is now Listening!\n";
 }
 
+void Server::sendData(int client_socket, std::string message)
+{
+	send(client_socket, message.c_str(), strlen(message.c_str()), 0);
+}
+
 void Server::readData(int fd, int epfd) {
 	ASSERT(BUFFER_SIZE > 0, "BUFFER_SIZE must be above 0");
 	char buffer[BUFFER_SIZE + 1];
@@ -82,5 +87,5 @@ void Server::acceptConnection(int epfd) {
   epoll_ctl(epfd, EPOLL_CTL_ADD, client_socket, &ev);
 
   Logs::info() << "Client Connected: " << client_socket << "\n";
-  // Server::sendData();
+  Server::sendData(client_socket, "Succesfully Connected!!\n");
 }
