@@ -31,12 +31,13 @@ std::string Client::send(const std::string &command) {
   }
 
   char buffer[4096];
-  std::string response;
-  int bytes_read;
+  std::string response = "";
 
-  while ((bytes_read = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
+  int bytes_read = recv(sock, buffer, sizeof(buffer) - 1, 0);
+
+  if (bytes_read > 0) {
     buffer[bytes_read] = '\0';
-    response += buffer;
+    response = buffer;
   }
 
   close(sock);
