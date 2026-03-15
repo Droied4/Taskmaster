@@ -78,4 +78,9 @@ config.programs["test"] = {
 	stderr = "/tmp/vgsworker.stderr",
 }
 
+config.programs.cat = {
+	cmd = "cat",
+	autostart = true,
+}
+
 return config
