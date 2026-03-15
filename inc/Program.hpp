@@ -44,6 +44,7 @@ private:
   std::string _name;
   ProgramConfig _config;
   std::vector<Process *> _processes;
+  bool _restarting;
 
 public:
   Program(const std::string &name, const ProgramConfig &config);
@@ -56,6 +57,9 @@ public:
   void stop();
   void restart();
   void monitor();
+
+  void setRestarting(bool val);
+  bool isRestarting() const;
 
   const std::string &getName() const;
   const ProgramConfig &getConfig() const;
