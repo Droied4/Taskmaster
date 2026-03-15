@@ -6,12 +6,9 @@
 ProcessManager::ProcessManager(const std::string &config_path)
     : _config_path(config_path) {
   ASSERT(!_config_path.empty(), "Config path cannot be empty");
-
   std::map<std::string, ProgramConfig> configs = _parser.parse(_config_path);
-
   for (const auto &[name, config] : configs) {
     _programs[name] = new Program(name, config);
-
     if (config.autostart) {
       _programs[name]->start();
     }
@@ -36,26 +33,35 @@ Process *ProcessManager::findProcessByPid(pid_t pid) {
   return nullptr;
 }
 
+Program *ProcessManager::findProgramByProcess(Process *proc) {
+  for (const auto &[name, prog] : _programs) {
+    for (Process *p : prog->getProcesses()) {
+      if (p == proc)
+        return prog;
+    }
+  }
+  return nullptr;
+}
+
 std::string
 ProcessManager::executeCommand(const std::string &cmd,
                                const std::vector<std::string> &params) {
   ASSERT(!cmd.empty(), "Command cannot be empty");
-
-  if (cmd == "reload") {
+  if (cmd == "reload")
     return _reload_cmd.execute(_programs, "");
-  }
-  if (cmd == "shutdown") {
+  if (cmd == "shutdown")
     return _shutdown_cmd.execute(_programs, "");
-  }
-  if (cmd == "status" && params.empty()) {
+  if (cmd == "status" && params.empty())
     return _status_cmd.execute(_programs, "");
+  if (cmd == "_get_programs") {
+    std::string result;
+    for (const auto &[name, prog] : _programs)
+      result += name + "\n";
+    return result;
   }
-
-  if (params.empty()) {
+  if (params.empty())
     return "Error: Command '" + cmd + "' requires at least one target.\n";
-  }
-
-  std::string response = "";
+  std::string response;
   for (const std::string &target : params) {
     if (cmd == "start")
       response += _start_cmd.execute(_programs, target);
@@ -68,14 +74,12 @@ ProcessManager::executeCommand(const std::string &cmd,
     else
       return "Error: Unknown command '" + cmd + "'.\n";
   }
-
   return response;
 }
 
 void ProcessManager::reloadConfig() {
   Logs::info() << "[ProcessManager] Reloading config from: " << _config_path
                << "\n";
-
   std::map<std::string, ProgramConfig> new_configs =
       _parser.parse(_config_path);
 
@@ -91,17 +95,14 @@ void ProcessManager::reloadConfig() {
 
   for (const auto &[name, new_cfg] : new_configs) {
     auto it = _programs.find(name);
-
     if (it == _programs.end()) {
       _programs[name] = new Program(name, new_cfg);
-      if (new_cfg.autostart) {
+      if (new_cfg.autostart)
         _programs[name]->start();
-      }
     } else {
       if (it->second->getConfig() != new_cfg) {
         it->second->stop();
         delete it->second;
-
         _programs[name] = new Program(name, new_cfg);
         _programs[name]->start();
       }
@@ -110,9 +111,8 @@ void ProcessManager::reloadConfig() {
 }
 
 void ProcessManager::shutdownAll() {
-  for (const auto &[name, prog] : _programs) {
+  for (const auto &[name, prog] : _programs)
     prog->stop();
-  }
 }
 
 bool ProcessManager::isExpectedExitCode(int exit_code,
@@ -123,26 +123,17 @@ bool ProcessManager::isExpectedExitCode(int exit_code,
 
 bool ProcessManager::shouldRestart(Process *proc, int exit_code) {
   ASSERT(proc != nullptr, "Process cannot be null in shouldRestart");
-
-  const ProgramConfig &config = proc->getConfig();
-  const std::string &autorestart = config.autorestart;
-
-  if (autorestart == "never") {
+  const std::string &autorestart = proc->getConfig().autorestart;
+  if (autorestart == "never")
     return false;
-  }
-
-  if (autorestart == "always") {
+  if (autorestart == "always")
     return true;
-  }
-
-  return !isExpectedExitCode(exit_code, config.exitcodes);
+  return !isExpectedExitCode(exit_code, proc->getConfig().exitcodes);
 }
 
 void ProcessManager::handleProcessRestart(Process *proc) {
   ASSERT(proc != nullptr, "Process cannot be null in handleProcessRestart");
-
   const ProgramConfig &config = proc->getConfig();
-
   if (proc->getRetries() >= config.startretries) {
     Logs::warning() << "[ProcessManager] " << proc->getName()
                     << " reached max retries (" << config.startretries
@@ -152,16 +143,36 @@ void ProcessManager::handleProcessRestart(Process *proc) {
     proc->setStatusMsg("Exited too quickly (process log may have details)");
     return;
   }
-
   proc->incrementRetries();
   proc->setState(ProcessState::BACKOFF);
   proc->setStatusMsg("Restarting...");
-
   Logs::info() << "[ProcessManager] Restarting " << proc->getName()
                << " (retry " << proc->getRetries() << "/" << config.startretries
                << ")\n";
-
   proc->spawn();
+}
+
+void ProcessManager::handleRestartingProcess(Process *proc, Program *prog) {
+  proc->setState(ProcessState::STOPPED);
+  proc->setEndTime(time(NULL));
+  proc->setStatusMsg("Stopped");
+
+  bool all_stopped = true;
+  for (Process *p : prog->getProcesses()) {
+    ProcessState s = p->getState();
+    if (s != ProcessState::STOPPED && s != ProcessState::EXITED &&
+        s != ProcessState::FATAL) {
+      all_stopped = false;
+      break;
+    }
+  }
+
+  if (all_stopped) {
+    Logs::info() << "[ProcessManager] All processes of " << prog->getName()
+                 << " stopped, relaunching...\n";
+    prog->setRestarting(false);
+    prog->start();
+  }
 }
 
 void ProcessManager::reap() {
@@ -170,7 +181,6 @@ void ProcessManager::reap() {
 
   while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
     Process *proc = findProcessByPid(pid);
-
     if (!proc) {
       Logs::warning() << "[ProcessManager] Reaped unknown PID: " << pid << "\n";
       continue;
@@ -185,16 +195,26 @@ void ProcessManager::reap() {
                    << ") exited with code " << exit_code << "\n";
     } else if (WIFSIGNALED(status)) {
       was_signaled = true;
-      int signal_num = WTERMSIG(status);
       Logs::info() << "[ProcessManager] " << proc->getName() << " (PID " << pid
-                   << ") killed by signal " << signal_num << "\n";
+                   << ") killed by signal " << WTERMSIG(status) << "\n";
     }
 
     if (was_signaled) {
-      proc->setState(ProcessState::STOPPED);
-      proc->setEndTime(time(NULL));
-      proc->setStatusMsg("Stopped");
-      proc->resetRetries();
+      Program *prog = findProgramByProcess(proc);
+      if (prog && prog->isRestarting()) {
+        handleRestartingProcess(proc, prog);
+      } else {
+        proc->setState(ProcessState::STOPPED);
+        proc->setEndTime(time(NULL));
+        proc->setStatusMsg("Stopped");
+        proc->resetRetries();
+      }
+      continue;
+    }
+
+    Program *prog = findProgramByProcess(proc);
+    if (prog && prog->isRestarting()) {
+      handleRestartingProcess(proc, prog);
       continue;
     }
 
@@ -220,12 +240,10 @@ void ProcessManager::reap() {
 
 void ProcessManager::updateRunningStates() {
   time_t now = time(NULL);
-
   for (const auto &[name, prog] : _programs) {
     for (Process *proc : prog->getProcesses()) {
       if (proc->getState() == ProcessState::STARTING) {
-        time_t elapsed = now - proc->getStartTime();
-        if (elapsed >= proc->getConfig().starttime) {
+        if (now - proc->getStartTime() >= proc->getConfig().starttime) {
           proc->setState(ProcessState::RUNNING);
           proc->resetRetries();
           Logs::debug() << "[ProcessManager] " << proc->getName()
