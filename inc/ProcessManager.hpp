@@ -6,6 +6,7 @@
 
 class ProcessManager {
 private:
+  std::string _config_path;
   std::map<std::string, Program *> _programs;
   ConfigParser _parser;
 
@@ -17,9 +18,12 @@ private:
   Shutdown _shutdown_cmd;
 
   Process *findProcessByPid(pid_t pid);
+  bool isExpectedExitCode(int exit_code, const std::vector<int> &exitcodes);
+  bool shouldRestart(Process *proc, int exit_code);
+  void handleProcessRestart(Process *proc);
 
 public:
-  ProcessManager(const std::map<std::string, ProgramConfig> &configs);
+  ProcessManager(const std::string &config_path);
   ~ProcessManager();
   ProcessManager(const ProcessManager &obj) = delete;
   ProcessManager &operator=(const ProcessManager &obj) = delete;
@@ -28,6 +32,7 @@ public:
   void shutdownAll();
 
   void reap();
+  void updateRunningStates();
 
   std::string executeCommand(const std::string &cmd,
                              const std::vector<std::string> &params);
