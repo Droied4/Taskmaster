@@ -75,7 +75,7 @@ char **Shell::taskmaster_completion(const char *text, int start, int end) {
     iss >> first_word;
 
     if (first_word == "start" || first_word == "stop" ||
-        first_word == "restart") {
+        first_word == "restart" || first_word == "status") {
       return rl_completion_matches(text, program_generator);
     }
   }
