@@ -5,11 +5,13 @@
 #include <sys/types.h>
 #include <vector>
 
-enum class ProcessState { STOPPED, STARTING, RUNNING, BACKOFF, EXITED, FATAL };
+enum class ProcessState { STOPPED, STARTING, RUNNING, STOPPING, BACKOFF, EXITED, FATAL };
 
 class Process {
 private:
   std::string _name;
+  std::string _program_name;
+  std::string _status_msg;
   ProgramConfig _config;
   pid_t _pid;
   ProcessState _state;
@@ -21,7 +23,8 @@ private:
   std::vector<char *> build_argv() const;
 
 public:
-  Process(const std::string &name, const ProgramConfig &config);
+  Process(const std::string &name, const std::string &program_name,
+          const ProgramConfig &config);
   ~Process();
 
   Process(const Process &) = delete;
@@ -33,5 +36,18 @@ public:
   pid_t getPid() const;
   ProcessState getState() const;
   const std::string &getName() const;
-  void setState(ProcessState);
+  const std::string &getProgramName() const;
+  const ProgramConfig &getConfig() const;
+  time_t getStartTime() const;
+  time_t getEndTime() const;
+  int getRetries() const;
+  const std::string &getStatusMsg() const;
+  std::string getUptime() const;
+  std::string getFormattedEndTime() const;
+
+  void setState(ProcessState state);
+  void setEndTime(time_t t);
+  void setStatusMsg(const std::string &msg);
+  void incrementRetries();
+  void resetRetries();
 };

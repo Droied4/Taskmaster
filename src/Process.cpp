@@ -1,18 +1,22 @@
 #include "Process.hpp"
 #include "Logs.hpp"
 #include "common.hpp"
+#include <cerrno>
 #include <csignal>
+#include <cstdio>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 
-Process::Process(const std::string &name, const ProgramConfig &config)
-    : _name(name), _config(config), _pid(0), _state(ProcessState::STOPPED),
-      _retries(0), _start_time(0), _end_time(0) {
+Process::Process(const std::string &name, const std::string &program_name,
+                 const ProgramConfig &config)
+    : _name(name), _program_name(program_name), _status_msg("Not started"),
+      _config(config), _pid(0), _state(ProcessState::STOPPED), _retries(0),
+      _start_time(0), _end_time(0) {
   ASSERT(!_name.empty(), "Process must have a name");
+  ASSERT(!_program_name.empty(), "Process must have a program name");
   ASSERT(!_config.cmd.empty(), "Process must have a command");
 }
 
@@ -46,16 +50,37 @@ std::vector<char *> Process::build_argv() const {
 
 bool Process::spawn() {
   ASSERT(_state == ProcessState::STOPPED || _state == ProcessState::EXITED ||
-             _state == ProcessState::BACKOFF,
+             _state == ProcessState::BACKOFF || _state == ProcessState::FATAL,
          "Attempted to spawn a process that is already active");
 
   std::vector<char *> argv = build_argv();
   std::vector<char *> envp = build_envp();
 
+  ASSERT(argv.size() >= 2, "argv must have at least command and nullptr");
+  ASSERT(argv[0] != nullptr, "argv[0] (command) cannot be null");
+
+  int error_pipe[2];
+  if (pipe(error_pipe) < 0) {
+    Logs::error() << "Failed to create error pipe for: " << _name << "\n";
+    for (char *arg : argv)
+      if (arg)
+        free(arg);
+    for (char *env : envp)
+      if (env)
+        free(env);
+    return false;
+  }
+
+  fcntl(error_pipe[1], F_SETFD, FD_CLOEXEC);
+
+  std::cout.flush();
+
   _pid = fork();
 
   if (_pid < 0) {
     Logs::error() << "Fork failed for process: " << _name << "\n";
+    close(error_pipe[0]);
+    close(error_pipe[1]);
     for (char *arg : argv)
       if (arg)
         free(arg);
@@ -66,13 +91,15 @@ bool Process::spawn() {
   }
 
   if (_pid == 0) {
+    close(error_pipe[0]);
+
     umask(_config.umask);
 
     if (!_config.workingdir.empty()) {
       if (chdir(_config.workingdir.c_str()) < 0) {
-        Logs::error() << "Child: Failed to chdir to " << _config.workingdir
-                      << "\n";
-        exit(1);
+        int err = errno;
+        write(error_pipe[1], &err, sizeof(err));
+        _exit(1);
       }
     }
 
@@ -96,9 +123,12 @@ bool Process::spawn() {
 
     execvpe(argv[0], argv.data(), envp.data());
 
-    Logs::error() << "Child: exec failed for " << argv[0] << "\n";
-    exit(1);
+    int err = errno;
+    write(error_pipe[1], &err, sizeof(err));
+    _exit(1);
   }
+
+  close(error_pipe[1]);
 
   for (char *arg : argv)
     if (arg)
@@ -107,8 +137,26 @@ bool Process::spawn() {
     if (env)
       free(env);
 
+  int exec_errno = 0;
+  ssize_t n = read(error_pipe[0], &exec_errno, sizeof(exec_errno));
+  close(error_pipe[0]);
+
+  if (n > 0) {
+    std::string cmd_name = _config.cmd;
+    size_t space_pos = cmd_name.find(' ');
+    if (space_pos != std::string::npos) {
+      cmd_name = cmd_name.substr(0, space_pos);
+    }
+    _status_msg = "can't find command '" + cmd_name + "'";
+    _state = ProcessState::FATAL;
+    _end_time = time(NULL);
+    Logs::error() << "[Process] " << _name << ": " << _status_msg << "\n";
+    return false;
+  }
+
   _state = ProcessState::STARTING;
   _start_time = time(NULL);
+  _status_msg = "";
 
   Logs::debug() << "[Process] Spawning " << _name << " with PID " << _pid
                 << "\n";
@@ -121,6 +169,7 @@ void Process::killProcess() {
     Logs::debug() << "[Process] Sending signal " << _config.stopsignal << " to "
                   << _name << "\n";
     kill(_pid, _config.stopsignal);
+    _state = ProcessState::STOPPING;
     Logs::debug() << "[Process] " << _name << " killed with signal "
                   << _config.stopsignal << "\n";
   }
@@ -132,4 +181,58 @@ ProcessState Process::getState() const { return _state; }
 
 const std::string &Process::getName() const { return _name; }
 
-void Process::setState(ProcessState state) { this->_state = state; }
+const std::string &Process::getProgramName() const { return _program_name; }
+
+const ProgramConfig &Process::getConfig() const { return _config; }
+
+time_t Process::getStartTime() const { return _start_time; }
+
+time_t Process::getEndTime() const { return _end_time; }
+
+int Process::getRetries() const { return _retries; }
+
+const std::string &Process::getStatusMsg() const { return _status_msg; }
+
+std::string Process::getUptime() const {
+  if (_state != ProcessState::RUNNING && _state != ProcessState::STARTING) {
+    return "";
+  }
+
+  time_t now = time(NULL);
+  time_t elapsed = now - _start_time;
+
+  int days = elapsed / 86400;
+  int hours = (elapsed % 86400) / 3600;
+  int mins = (elapsed % 3600) / 60;
+  int secs = elapsed % 60;
+
+  char buffer[64];
+  if (days > 0) {
+    snprintf(buffer, sizeof(buffer), "%d days, %d:%02d:%02d", days, hours, mins,
+             secs);
+  } else {
+    snprintf(buffer, sizeof(buffer), "%d:%02d:%02d", hours, mins, secs);
+  }
+  return std::string(buffer);
+}
+
+std::string Process::getFormattedEndTime() const {
+  if (_end_time == 0) {
+    return "";
+  }
+
+  struct tm *tm_info = localtime(&_end_time);
+  char buffer[32];
+  strftime(buffer, sizeof(buffer), "%b %d %I:%M %p", tm_info);
+  return std::string(buffer);
+}
+
+void Process::setState(ProcessState state) { _state = state; }
+
+void Process::setEndTime(time_t t) { _end_time = t; }
+
+void Process::setStatusMsg(const std::string &msg) { _status_msg = msg; }
+
+void Process::incrementRetries() { _retries++; }
+
+void Process::resetRetries() { _retries = 0; }
