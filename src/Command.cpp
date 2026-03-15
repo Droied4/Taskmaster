@@ -175,8 +175,9 @@ std::string Restart::execute(std::map<std::string, Program *> &programs,
   auto it = programs.find(target);
   if (it != programs.end()) {
     ASSERT(it->second != nullptr, "Program pointer cannot be null");
+    it->second->setRestarting(true);
     it->second->restart();
-    return target + ": restarted\n";
+    return target + ": restarting\n";
   }
   return target + ": ERROR (no such process)\n";
 }
