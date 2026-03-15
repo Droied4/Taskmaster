@@ -4,8 +4,10 @@
 #include <sys/signalfd.h>
 
 Daemon::Daemon(ProcessManager &obj)
-    : _epfd(epoll_create1(0)), _sig_fd(-1), _serv(_epfd), _manager(obj) {
+    : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _serv(_epfd),
+      _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
+  signal(SIGPIPE, SIG_IGN);
 }
 
 Daemon::~Daemon() {}
