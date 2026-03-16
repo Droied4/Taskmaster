@@ -9,8 +9,8 @@ Daemon::Daemon(ProcessManager &obj)
       _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
- if (daemon(0,0) == -1 )
-  ERROR("daemon failed");
+ // if (daemon(0,0) == -1 )
+ //  ERROR("daemon failed");
 }
 
 Daemon::~Daemon() {}
@@ -73,11 +73,15 @@ void Daemon::run() {
         }
       } else {
         std::string input = _serv.readData(client_socket, this->_epfd);
+		std::string output;
         if (!input.empty()) {
           _cparser.setCommandParser(input);
-          std::string output = _manager.executeCommand(_cparser.getCommand(),
-                                                       _cparser.getParams());
-          _serv.sendData(client_socket, output);
+		  std::string cmd = _cparser.getCommand();
+		  if (!cmd.empty())
+		  {
+			  output = _manager.executeCommand((cmd),_cparser.getParams());
+          	_serv.sendData(client_socket, output);
+		  }
         }
       }
     }
