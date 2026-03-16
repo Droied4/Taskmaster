@@ -4,6 +4,54 @@
 #include <algorithm>
 #include <csignal>
 
+static std::vector<Process *>
+resolveTarget(std::map<std::string, Program *> &programs,
+              const std::string &target, Program **out_prog,
+              std::string &error) {
+  std::vector<Process *> result;
+  size_t colon = target.find(':');
+
+  if (colon == std::string::npos) {
+    auto it = programs.find(target);
+    if (it == programs.end()) {
+      error = "Error: Program '" + target + "' not found\n";
+      return result;
+    }
+    if (out_prog)
+      *out_prog = it->second;
+    for (Process *proc : it->second->getProcesses()) {
+      ASSERT(proc != nullptr, "Process pointer cannot be null");
+      result.push_back(proc);
+    }
+  } else {
+    std::string prog_name = target.substr(0, colon);
+    std::string proc_name = target.substr(colon + 1);
+
+    auto it = programs.find(prog_name);
+    if (it == programs.end()) {
+      error = "Error: Program '" + prog_name + "' not found\n";
+      return result;
+    }
+    if (out_prog)
+      *out_prog = it->second;
+    if (proc_name == "*") {
+      for (Process *proc : it->second->getProcesses())
+        result.push_back(proc);
+      return result;
+    }
+    for (Process *proc : it->second->getProcesses()) {
+      ASSERT(proc != nullptr, "Process pointer cannot be null");
+      if (proc->getName() == proc_name) {
+        result.push_back(proc);
+        return result;
+      }
+    }
+    error = "Error: Process '" + proc_name + "' not found in program '" +
+            prog_name + "'\n";
+  }
+  return result;
+}
+
 static std::string stateToString(ProcessState state) {
   switch (state) {
   case ProcessState::STOPPED:
@@ -97,14 +145,15 @@ std::string Start::execute(std::map<std::string, Program *> &programs,
                            const std::string &target) {
   ASSERT(!target.empty(), "Start command requires a target");
 
-  auto it = programs.find(target);
-  if (it == programs.end())
-    return "Error: Program '" + target + "' not found\n";
+  std::string error;
 
-  ASSERT(it->second != nullptr, "Program pointer cannot be null");
+  Program *prog = nullptr;
+  auto procs = resolveTarget(programs, target, &prog, error);
+  if (!error.empty())
+    return error;
 
   std::string report = "";
-  for (Process *proc : it->second->getProcesses()) {
+  for (Process *proc : procs) {
     ASSERT(proc != nullptr, "Process pointer cannot be null");
     ProcessState s = proc->getState();
 
@@ -125,14 +174,20 @@ Stop::Stop() : Command("stop") {}
 std::string Stop::execute(std::map<std::string, Program *> &programs,
                           const std::string &target) {
   ASSERT(!target.empty(), "Stop command requires a target");
+  std::string error;
 
-  auto it = programs.find(target);
-  if (it != programs.end()) {
-    ASSERT(it->second != nullptr, "Program pointer cannot be null");
-    it->second->stop();
-    return target + ": stopped\n";
+  Program *prog = nullptr;
+  auto procs = resolveTarget(programs, target, &prog, error);
+  if (!error.empty())
+    return error;
+
+  std::string report = "";
+  for (Process *proc : procs) {
+    ASSERT(proc != nullptr, "Program pointer cannot be null");
+    proc->killProcess();
+    report += proc->getName() + ": stopped\n";
   }
-  return target + ": ERROR (no such process)\n";
+  return report;
 }
 
 Status::Status() : Command("status") {}
@@ -155,15 +210,15 @@ std::string Status::execute(std::map<std::string, Program *> &programs,
     return result;
   }
 
-  auto it = programs.find(target);
-  if (it != programs.end()) {
-    for (Process *proc : it->second->getProcesses()) {
-      result += formatStatusLine(proc, it->second, name_width);
-    }
-    return result;
+  std::string error;
+  Program *prog = nullptr;
+  auto procs = resolveTarget(programs, target, &prog, error);
+  if (!error.empty())
+    return error;
+  for (Process *proc : procs) {
+    result += formatStatusLine(proc, prog, name_width);
   }
-
-  return "Error: Program '" + target + "' not found\n";
+  return result;
 }
 
 Restart::Restart() : Command("restart") {}
@@ -172,14 +227,16 @@ std::string Restart::execute(std::map<std::string, Program *> &programs,
                              const std::string &target) {
   ASSERT(!target.empty(), "Restart command requires a target");
 
-  auto it = programs.find(target);
-  if (it != programs.end()) {
-    ASSERT(it->second != nullptr, "Program pointer cannot be null");
-    it->second->setRestarting(true);
-    it->second->restart();
-    return target + ": restarting\n";
-  }
-  return target + ": ERROR (no such process)\n";
+  std::string error;
+
+  Program *prog = nullptr;
+  auto procs = resolveTarget(programs, target, &prog, error);
+  if (!error.empty())
+    return error;
+
+  prog->restartProcesses(procs);
+
+  return target + ": restarting\n";
 }
 
 Reload::Reload() : Command("reload") {}
