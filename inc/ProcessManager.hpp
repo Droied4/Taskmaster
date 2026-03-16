@@ -15,6 +15,7 @@ private:
   Status _status_cmd;
   Reload _reload_cmd;
   Restart _restart_cmd;
+  Pid _pid_cmd;
   Shutdown _shutdown_cmd;
 
   Process *findProcessByPid(pid_t pid);

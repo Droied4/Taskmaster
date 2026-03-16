@@ -3,6 +3,7 @@
 #include <string>
 #include "Logs.hpp"
 #include <vector>
+#include <cstring>
 
 class CommandParser {
 	private:
@@ -11,6 +12,7 @@ class CommandParser {
 
 		std::string getFirstParam(std::string input);
 		std::vector<std::string> splitParams(std::string input);
+		std::string clearInput(std::string input);
 
 	public:
 		CommandParser();

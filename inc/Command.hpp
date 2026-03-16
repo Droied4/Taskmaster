@@ -55,6 +55,13 @@ public:
                       const std::string &target) override;
 };
 
+class Pid : public Command {
+public:
+  Pid();
+  std::string execute(std::map<std::string, Program *> &programs,
+                      const std::string &target) override;
+};
+
 class Shutdown : public Command {
 public:
   Shutdown();

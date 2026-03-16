@@ -11,7 +11,7 @@ Shell::Shell(Client &client, ResponseFormatter &formatter)
 
   instance = this;
   _commands = {"start",  "stop", "restart", "status",
-               "reload", "exit", "quit",    "help"};
+               "reload", "exit", "quit", "help"};
   rl_attempted_completion_function = Shell::taskmaster_completion;
 }
 

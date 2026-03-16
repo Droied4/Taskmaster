@@ -1,12 +1,14 @@
 #include "Logs.hpp"
 
-Logs::Logs() {
+Logs::Logs() : _output(&std::cout){
   this->_min_level = Level::INFO;
   this->_enabled = true;
   this->_err = false;
 }
 
-Logs::~Logs() {}
+Logs::~Logs() {
+	closeFile();
+}
 
 Logs &Logs::getInstance() {
   static Logs instance;
@@ -18,22 +20,34 @@ void Logs::printTimeStamp() const {
   std::time_t now_c = std::chrono::system_clock::to_time_t(now);
   std::tm *parts = std::localtime(&now_c);
 
-  std::cout << std::put_time(parts, "[%Y-%m-%d %H:%M:%S] ");
+  *_output << std::put_time(parts, "[%Y-%m-%d %H:%M:%S] ");
 }
 
 void Logs::printLevel(Level level) const {
   switch (level) {
   case Level::ERROR:
-    std::cout << "\033[31m[ERROR] \033[0m";
+	if (_output == &std::cout)
+    	*_output << "\033[31m[ERROR] \033[0m";
+	else
+    	*_output << "[ERROR]";
     break;
   case Level::WARNING:
-    std::cout << "\033[33m[WARNING] \033[0m";
+	if (_output == &std::cout)
+    *_output << "\033[33m[WARNING] \033[0m";
+	else
+    	*_output << "[WARNING]";
     break;
   case Level::INFO:
-    std::cout << "\033[34m[INFO] \033[0m";
+	if (_output == &std::cout)
+    *_output << "\033[34m[INFO] \033[0m";
+	else
+    	*_output << "[INFO]";
     break;
   case Level::LDEBUG:
-    std::cout << "\033[32m[DEBUG] \033[0m";
+	if (_output == &std::cout)
+    *_output << "\033[32m[DEBUG] \033[0m";
+	else
+    	*_output << "[DEBUG]";
     break;
   }
 }
@@ -64,6 +78,23 @@ Logs &Logs::operator<<(std::ostream &(*manip)(std::ostream &)) {
   if (_enabled)
     manip(std::cout);
   return *this;
+}
+
+void Logs::setFile(std::string filename)
+{
+    Logs &logger = getInstance();
+	 
+		logger._file.open(filename, std::ios::app);
+		if (logger._file.is_open())
+			logger._output = &logger._file;
+		else
+			Logs::warning() << "path: " << filename << " not found. Using default output\n";
+}
+
+void Logs::closeFile()
+{
+	if (_file.is_open())
+		_file.close();
 }
 
 Logs &Logs::error() { return (getInstance() << Level::ERROR); }

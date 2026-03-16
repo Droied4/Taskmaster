@@ -6,8 +6,8 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG
   Logs::setMinLevel(Logs::Level::LDEBUG);
 #endif
-  Logs::setMinLevel(Logs::Level::INFO);
 
+  Logs::setFile("/home/droied/42/taskmaster/logs/logs.txt");
   std::string config_path = "config.lua";
   if (argc > 1) {
     config_path = argv[1];
