@@ -16,7 +16,7 @@ std::string Client::send(const std::string &command) {
 
   struct timeval tv;
   tv.tv_sec = 0;
-  tv.tv_usec = 1000;
+  tv.tv_usec = 150000;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
   struct sockaddr_un server_addr;
@@ -27,7 +27,7 @@ std::string Client::send(const std::string &command) {
 
   if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     close(sock);
-    return "Error: taskmasterd is not running or connection refused.";
+    return "Error: taskmasterd is not running or connection refused.\n";
   }
 
   if (::send(sock, command.c_str(), command.length(), 0) < 0) {
