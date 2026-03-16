@@ -16,7 +16,7 @@ std::string Client::send(const std::string &command) {
 
   struct timeval tv;
   tv.tv_sec = 0;
-  tv.tv_usec = 300;
+  tv.tv_usec = 1000;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
   struct sockaddr_un server_addr;
@@ -39,13 +39,7 @@ std::string Client::send(const std::string &command) {
   char buffer[4096];
   int bytes_read;
   while ((bytes_read = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
-    for (int i = 0; i < bytes_read; i++) {
-      if (buffer[i] == '\0') {
-        close(sock);
-        return response;
-      }
-      response += buffer[i];
-    }
+    response.append(buffer, bytes_read);
   }
   close(sock);
   return response;
