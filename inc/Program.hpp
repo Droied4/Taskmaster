@@ -55,6 +55,7 @@ public:
   void start();
   void stop();
   void restart();
+  void restartProcesses(const std::vector<Process *> &procs);
 
   void setRestarting(bool val);
   bool isRestarting() const;
