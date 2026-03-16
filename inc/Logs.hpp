@@ -20,10 +20,10 @@ public:
   static Logs &debug();
   Logs &operator<<(std::ostream &(*manip)(std::ostream &));
   template <typename T> Logs &operator<<(const T &value) {
-    if (_enabled)
-		std::cout << value;
-	if (_err)
+    if (_enabled && _err)
 		std::cerr << value;
+	else if (_enabled)
+		std::cout << value;
     return (*this);
   }
   static void setMinLevel(Level level);
