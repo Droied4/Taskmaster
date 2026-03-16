@@ -67,12 +67,6 @@ void Program::restart() {
   }
 }
 
-void Program::monitor() {
-  // for (Process *p : _processes) {
-  //   p->monitor();
-  // }
-}
-
 const std::string &Program::getName() const { return _name; }
 
 const ProgramConfig &Program::getConfig() const { return _config; }

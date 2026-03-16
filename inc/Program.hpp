@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <vector>
 
-// solo la declaracion para que no se me rompa todo xd
 class Process;
 
 struct ProgramConfig {
@@ -56,7 +55,6 @@ public:
   void start();
   void stop();
   void restart();
-  void monitor();
 
   void setRestarting(bool val);
   bool isRestarting() const;

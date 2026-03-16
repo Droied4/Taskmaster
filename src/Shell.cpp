@@ -86,7 +86,7 @@ void Shell::fetch_programs() {
   std::string response = _client.send("_get_programs");
 
   if (response.find("Error:") == 0) {
-    std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
+    // std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
     return;
   }
 
@@ -127,5 +127,6 @@ void Shell::run() {
     _formatter.print_response(raw_response);
 
     free(line);
+    fetch_programs();
   }
 }

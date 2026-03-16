@@ -21,9 +21,9 @@ public:
   Logs &operator<<(std::ostream &(*manip)(std::ostream &));
   template <typename T> Logs &operator<<(const T &value) {
     if (_enabled && _err)
-		std::cerr << value;
-	else if (_enabled)
-		std::cout << value;
+      std::cerr << value;
+    else if (_enabled)
+      std::cout << value;
     return (*this);
   }
   static void setMinLevel(Level level);

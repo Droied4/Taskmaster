@@ -62,7 +62,6 @@ std::string Server::readData(int fd, int epfd) {
 
   bytes = read(fd, buffer, BUFFER_SIZE);
   if (bytes <= 0) {
-    // Logs::info() << "Client Disconnected: " << fd << "\n";
     epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
     close(fd);
     return ("");
@@ -87,7 +86,4 @@ void Server::acceptConnection(int epfd) {
   ev.events = EPOLLIN | EPOLLRDHUP;
   ev.data.fd = client_socket;
   epoll_ctl(epfd, EPOLL_CTL_ADD, client_socket, &ev);
-
-  // Logs::info() << "Client Connected: " << client_socket << "\n";
-  // Server::sendData(client_socket, "Succesfully Connected!!\n");
 }
