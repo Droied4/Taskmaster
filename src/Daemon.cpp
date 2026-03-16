@@ -9,8 +9,8 @@ Daemon::Daemon(ProcessManager &obj)
       _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
-  // if (daemon(0,0) == -1 )
-  //  ERROR("daemon failed");
+  // if (daemon(1, 0) == -1)
+  //   ERROR("daemon failed");
 }
 
 Daemon::~Daemon() {}
