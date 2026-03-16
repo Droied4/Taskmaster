@@ -1,6 +1,4 @@
-#ifndef SERVER_HPP
-#define SERVER_HPP
-
+#pragma once
 #include <string>
 #include <sys/un.h>
 class Server {
@@ -26,5 +24,3 @@ public:
   void sendData(int client_socket, std::string message);
   int getServerFd() const;
 };
-
-#endif

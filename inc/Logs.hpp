@@ -1,6 +1,4 @@
-#ifndef LOGS
-#define LOGS
-
+#pragma once
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -44,5 +42,3 @@ private:
   Logs &operator<<(Level level);
   void setEnable();
 };
-
-#endif
