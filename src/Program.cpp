@@ -50,12 +50,20 @@ void Program::stop() {
 
 void Program::restart() {
   Logs::info() << "[Program] Restarting " << _name << "...\n";
+  bool any_alive = false;
   for (Process *p : _processes) {
-    if (p->getState() == ProcessState::RUNNING ||
-        p->getState() == ProcessState::STARTING) {
-      p->setState(ProcessState::STOPPING);
+    ProcessState state = p->getState();
+    if (state == ProcessState::RUNNING || state == ProcessState::STARTING) {
       p->killProcess();
+      any_alive = true;
+    } else if (state == ProcessState::STOPPING) {
+      any_alive = true;
     }
+  }
+  if (any_alive) {
+    setRestarting(true);
+  } else {
+    start();
   }
 }
 
