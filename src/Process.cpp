@@ -73,14 +73,13 @@ bool Process::spawn() {
 
   fcntl(error_pipe[1], F_SETFD, FD_CLOEXEC);
 
-  std::cout.flush();
-
   _pid = fork();
 
   if (_pid < 0) {
     Logs::error() << "Fork failed for process: " << _name << "\n";
     close(error_pipe[0]);
     close(error_pipe[1]);
+    _state = ProcessState::FATAL;
     for (char *arg : argv)
       if (arg)
         free(arg);
@@ -91,6 +90,10 @@ bool Process::spawn() {
   }
 
   if (_pid == 0) {
+    sigset_t empty;
+    sigemptyset(&empty);
+    sigprocmask(SIG_SETMASK, &empty, NULL);
+
     close(error_pipe[0]);
 
     umask(_config.umask);
@@ -147,7 +150,7 @@ bool Process::spawn() {
     if (space_pos != std::string::npos) {
       cmd_name = cmd_name.substr(0, space_pos);
     }
-    _status_msg = "can't find command '" + cmd_name + "'";
+    _status_msg = std::string(strerror(exec_errno)) + ": " + _config.cmd;
     _state = ProcessState::FATAL;
     _end_time = time(NULL);
     Logs::error() << "[Process] " << _name << ": " << _status_msg << "\n";
@@ -164,6 +167,9 @@ bool Process::spawn() {
 }
 
 void Process::killProcess() {
+
+  Logs::debug() << "[killprocess] " << _name << " state: " << (int)_state
+                << "\n";
   if (_pid > 0 &&
       (_state == ProcessState::RUNNING || _state == ProcessState::STARTING)) {
     Logs::debug() << "[Process] Sending signal " << _config.stopsignal << " to "
@@ -172,6 +178,8 @@ void Process::killProcess() {
     _state = ProcessState::STOPPING;
     Logs::debug() << "[Process] " << _name << " killed with signal "
                   << _config.stopsignal << "\n";
+  } else {
+    Logs::debug() << "[killprocess] skipped (wrong state or no pid)\n";
   }
 }
 

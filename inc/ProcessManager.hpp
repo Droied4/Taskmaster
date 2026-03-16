@@ -21,6 +21,8 @@ private:
   bool isExpectedExitCode(int exit_code, const std::vector<int> &exitcodes);
   bool shouldRestart(Process *proc, int exit_code);
   void handleProcessRestart(Process *proc);
+  Program *findProgramByProcess(Process *proc);
+  void handleRestartingProcess(Process *proc, Program *prog);
 
 public:
   ProcessManager(const std::string &config_path);

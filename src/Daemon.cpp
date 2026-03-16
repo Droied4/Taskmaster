@@ -4,8 +4,10 @@
 #include <sys/signalfd.h>
 
 Daemon::Daemon(ProcessManager &obj)
-    : _epfd(epoll_create1(0)), _sig_fd(-1), _serv(_epfd), _manager(obj) {
+    : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _serv(_epfd),
+      _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
+  signal(SIGPIPE, SIG_IGN);
 }
 
 Daemon::~Daemon() {}
@@ -16,6 +18,7 @@ void Daemon::setupSignals() {
   sigaddset(&mask, SIGINT);
   sigaddset(&mask, SIGTERM);
   sigaddset(&mask, SIGHUP);
+  // sigaddset(&mask, SIGCHLD);
 
   if (sigprocmask(SIG_BLOCK, &mask, NULL) ==
       -1) { // poner las señales en el bloque de señales pendientes
@@ -38,9 +41,10 @@ void Daemon::run() {
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
   _serv.bindListen();
+  signal(SIGPIPE, SIG_IGN);
 
   while (42) {
-    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 500);
+    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 100);
     for (int i = 0; i < nfds; ++i) {
       int client_socket = events[i].data.fd;
       if (client_socket == _serv.getServerFd())
