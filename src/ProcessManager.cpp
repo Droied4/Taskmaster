@@ -53,12 +53,8 @@ ProcessManager::executeCommand(const std::string &cmd,
     return _shutdown_cmd.execute(_programs, "");
   if (cmd == "status" && params.empty())
     return _status_cmd.execute(_programs, "");
-  if (cmd == "_get_programs") {
-    std::string result;
-    for (const auto &[name, prog] : _programs)
-      result += name + "\n";
-    return result;
-  }
+  if (cmd == "_get_programs")
+    return getPrograms();
   if (params.empty())
     return "Error: Command '" + cmd + "' requires at least one target.\n";
   std::string response;
@@ -75,6 +71,19 @@ ProcessManager::executeCommand(const std::string &cmd,
       return "Error: Unknown command '" + cmd + "'.\n";
   }
   return response;
+}
+
+std::string ProcessManager::getPrograms() {
+  std::string result;
+  for (const auto &[name, prog] : _programs) {
+    result += name + "\n";
+    if (prog->getConfig().numprocs > 1) {
+      result += name + ":*\n";
+      for (Process *proc : prog->getProcesses())
+        result += name + ":" + proc->getName() + "\n";
+    }
+  }
+  return result;
 }
 
 void ProcessManager::reloadConfig() {
