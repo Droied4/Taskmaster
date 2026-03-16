@@ -121,6 +121,10 @@ void Shell::run() {
       _formatter.print_help();
       free(line);
       continue;
+    } else if (input == "clear") {
+      std::cout << "\033[2J\033[H";
+      free(line);
+      continue;
     }
 
     std::string raw_response = _client.send(input);
