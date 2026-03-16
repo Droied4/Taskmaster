@@ -24,6 +24,8 @@ private:
   Program *findProgramByProcess(Process *proc);
   void handleRestartingProcess(Process *proc, Program *prog);
 
+  std::string getPrograms();
+
 public:
   ProcessManager(const std::string &config_path);
   ~ProcessManager();

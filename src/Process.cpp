@@ -106,23 +106,27 @@ bool Process::spawn() {
       }
     }
 
-    if (!_config.stdout_path.empty()) {
-      int fd_out = open(_config.stdout_path.c_str(),
-                        O_WRONLY | O_CREAT | O_APPEND, 0644);
-      if (fd_out >= 0) {
-        dup2(fd_out, STDOUT_FILENO);
-        close(fd_out);
-      }
-    }
+    const char *out_path =
+        _config.stdout_path.empty() ? "/dev/null" : _config.stdout_path.c_str();
 
-    if (!_config.stderr_path.empty()) {
-      int fd_err = open(_config.stderr_path.c_str(),
-                        O_WRONLY | O_CREAT | O_APPEND, 0644);
-      if (fd_err >= 0) {
-        dup2(fd_err, STDERR_FILENO);
-        close(fd_err);
-      }
+    int fd_out = open(out_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd_out < 0) {
+      int err = errno;
+      write(error_pipe[1], &err, sizeof(err));
+      _exit(1);
     }
+    dup2(fd_out, STDOUT_FILENO);
+    close(fd_out);
+    const char *err_path =
+        _config.stderr_path.empty() ? "/dev/null" : _config.stderr_path.c_str();
+    int fd_err = open(err_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd_err < 0) {
+      int err = errno;
+      write(error_pipe[1], &err, sizeof(err));
+      _exit(1);
+    }
+    dup2(fd_err, STDERR_FILENO);
+    close(fd_err);
 
     execvpe(argv[0], argv.data(), envp.data());
 

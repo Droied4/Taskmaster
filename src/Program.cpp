@@ -48,10 +48,9 @@ void Program::stop() {
   }
 }
 
-void Program::restart() {
-  Logs::info() << "[Program] Restarting " << _name << "...\n";
+void Program::restartProcesses(const std::vector<Process *> &procs) {
   bool any_alive = false;
-  for (Process *p : _processes) {
+  for (Process *p : procs) {
     ProcessState state = p->getState();
     if (state == ProcessState::RUNNING || state == ProcessState::STARTING) {
       p->killProcess();
@@ -65,6 +64,11 @@ void Program::restart() {
   } else {
     start();
   }
+}
+
+void Program::restart() {
+  Logs::info() << "[Program] Restarting " << _name << "...\n";
+  restartProcesses(_processes);
 }
 
 const std::string &Program::getName() const { return _name; }

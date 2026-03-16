@@ -1,7 +1,7 @@
-#define CONFIG_ERROR(prog, msg)                                                \
+#define CONFIG_ERROR(prog, msg, error)                                         \
   do {                                                                         \
-    Logs::error() << "Config Error [" << prog << "]: " << msg << "\n";         \
-    std::exit(1);                                                              \
+    error = "[Config] " + std::string(prog) + ": " + std::string(msg);         \
+    return false;                                                              \
   } while (0)
 
 #define ERROR(msg)                                                             \
