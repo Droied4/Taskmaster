@@ -2,12 +2,15 @@
 #include "Server.hpp"
 #include <csignal>
 #include <sys/signalfd.h>
+#include <unistd.h>
 
 Daemon::Daemon(ProcessManager &obj)
     : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _serv(_epfd),
       _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
+ if (daemon(0,0) == -1 )
+  ERROR("daemon failed");
 }
 
 Daemon::~Daemon() {}
@@ -42,7 +45,7 @@ void Daemon::run() {
   setupSignals();
   _serv.bindListen();
   signal(SIGPIPE, SIG_IGN);
-
+  Logs::debug() << "pid: " << getpid() << "\n";
   while (42) {
     int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 100);
     for (int i = 0; i < nfds; ++i) {

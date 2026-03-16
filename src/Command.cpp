@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include <algorithm>
 #include <csignal>
+#include <string>
 
 static std::string stateToString(ProcessState state) {
   switch (state) {
@@ -191,6 +192,18 @@ std::string Reload::execute(std::map<std::string, Program *> &programs,
 
   kill(getpid(), SIGHUP);
   return "taskmasterd: reloading configuration...\n";
+}
+
+Pid::Pid() : Command("pid") {}
+
+std::string Pid::execute(std::map<std::string, Program *> &programs,
+                              const std::string &target) {
+
+  (void)programs;
+  (void)target;
+  std::string pid;
+  pid = std::to_string(getpid()) + "\n"; 
+  return (pid);
 }
 
 Shutdown::Shutdown() : Command("shutdown") {}

@@ -53,6 +53,8 @@ ProcessManager::executeCommand(const std::string &cmd,
     return _shutdown_cmd.execute(_programs, "");
   if (cmd == "status" && params.empty())
     return _status_cmd.execute(_programs, "");
+  if (cmd == "pid" && params.empty())
+    return _pid_cmd.execute(_programs, "");
   if (cmd == "_get_programs") {
     std::string result;
     for (const auto &[name, prog] : _programs)

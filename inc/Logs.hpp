@@ -3,8 +3,10 @@
 
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <unistd.h>
 
 class Logs {
 public:
@@ -20,13 +22,14 @@ public:
   static Logs &debug();
   Logs &operator<<(std::ostream &(*manip)(std::ostream &));
   template <typename T> Logs &operator<<(const T &value) {
-    if (_enabled && _err)
+    if (_enabled && _err && !_file.is_open())
       std::cerr << value;
     else if (_enabled)
-      std::cout << value;
+      *_output << value;
     return (*this);
   }
   static void setMinLevel(Level level);
+  static void setFile(std::string filename);
 
 private:
   Logs();
@@ -34,7 +37,10 @@ private:
   Level _min_level;
   bool _enabled;
   bool _err;
+  std::ostream *_output;
+  std::ofstream _file;
 
+  void closeFile();
   void printTimeStamp() const;
   void printLevel(Level level) const;
   static Logs &getInstance();
