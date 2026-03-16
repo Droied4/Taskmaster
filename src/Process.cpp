@@ -96,6 +96,8 @@ bool Process::spawn() {
 
     close(error_pipe[0]);
 
+    // setsid();
+
     umask(_config.umask);
 
     if (!_config.workingdir.empty()) {
@@ -105,6 +107,16 @@ bool Process::spawn() {
         _exit(1);
       }
     }
+    // esto probablemente fixee el tema de que la terminal queda colgada cuando
+    // se cierra abruptamente
+    // int fd_in = open("/dev/null", O_RDONLY); if (fd_in
+    // < 0) {
+    //   int err = errno;
+    //   write(error_pipe[1], &err, sizeof(err));
+    //   _exit(1);
+    // }
+    // dup2(fd_in, STDIN_FILENO);
+    // close(fd_in);
 
     const char *out_path =
         _config.stdout_path.empty() ? "/dev/null" : _config.stdout_path.c_str();

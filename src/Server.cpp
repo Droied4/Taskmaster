@@ -5,11 +5,10 @@
 Server::Server(int epfd) {
   ASSERT(strlen(SOCK_PATH) > 0, "SOCK_PATH must be declared");
   ASSERT(epfd > 0, "epfd not initialized");
-    if (access(SOCK_PATH, F_OK) == 0) 
-	{
-		std::cerr << "Server already running\n";
-		exit(1);
-	}
+  if (access(SOCK_PATH, F_OK) == 0) {
+    std::cerr << "Server already running\n";
+    exit(1);
+  }
   this->_serv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (this->_serv_fd < 0)
     ERROR("Sever fd socket failed!");
@@ -37,8 +36,10 @@ Server &Server::operator=(const Server &obj) {
   return (*this);
 }
 
-Server::~Server() { remove(SOCK_PATH); 
-close(this->_serv_fd); }
+Server::~Server() {
+  remove(SOCK_PATH);
+  close(this->_serv_fd);
+}
 
 void Server::setServerFd(int fd) { this->_serv_fd = fd; }
 
