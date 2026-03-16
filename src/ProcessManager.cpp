@@ -1,6 +1,7 @@
 #include "ProcessManager.hpp"
 #include "common.hpp"
 #include <algorithm>
+#include <set>
 #include <sys/wait.h>
 
 ProcessManager::ProcessManager(const std::string &config_path)
@@ -52,31 +53,37 @@ std::string
 ProcessManager::executeCommand(const std::string &cmd,
                                const std::vector<std::string> &params) {
   ASSERT(!cmd.empty(), "Command cannot be empty");
+
   if (cmd == "reload")
     return _reload_cmd.execute(_programs, "");
   if (cmd == "shutdown")
     return _shutdown_cmd.execute(_programs, "");
-  if (cmd == "status" && params.empty())
-    return _status_cmd.execute(_programs, "");
-  if (cmd == "pid" && params.empty())
-    return _pid_cmd.execute(_programs, "");
   if (cmd == "_get_programs")
     return getPrograms();
-  if (params.empty())
-    return "Error: Command '" + cmd + "' requires at least one target.\n";
-  std::string response;
-  for (const std::string &target : params) {
-    if (cmd == "start")
-      response += _start_cmd.execute(_programs, target);
-    else if (cmd == "stop")
-      response += _stop_cmd.execute(_programs, target);
-    else if (cmd == "status")
-      response += _status_cmd.execute(_programs, target);
-    else if (cmd == "restart")
-      response += _restart_cmd.execute(_programs, target);
-    else
-      return "Error: Unknown command '" + cmd + "'.\n";
+
+  static const std::map<std::string, Command *> command_map = {
+      {"start", &_start_cmd},     {"stop", &_stop_cmd},
+      {"restart", &_restart_cmd}, {"status", &_status_cmd},
+      {"pid", &_pid_cmd},
+  };
+
+  static const std::set<std::string> not_target_commands = {"status", "pid"};
+
+  auto it = command_map.find(cmd);
+  if (it == command_map.end()) {
+    return "Error: Unknown command: " + cmd + "\n";
   }
+
+  if (params.empty()) {
+    if (not_target_commands.count(cmd))
+      return it->second->execute(_programs, "");
+    return "Error: Command '" + cmd + "' requires a target\n";
+  }
+
+  std::string response;
+  for (const std::string &target : params)
+    response += it->second->execute(_programs, target);
+
   return response;
 }
 
