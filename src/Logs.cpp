@@ -83,11 +83,12 @@ Logs &Logs::operator<<(std::ostream &(*manip)(std::ostream &)) {
 void Logs::setFile(std::string filename)
 {
     Logs &logger = getInstance();
-	logger._file.open(filename, std::ios::app);
-	if (logger._file.is_open())
-		logger._output = &logger._file;
-	else
-		Logs::warning() << "Log file not created setting default output\n";
+	 
+		logger._file.open(filename, std::ios::app);
+		if (logger._file.is_open())
+			logger._output = &logger._file;
+		else
+			Logs::warning() << "path: " << filename << " not found. Using default output\n";
 }
 
 void Logs::closeFile()
