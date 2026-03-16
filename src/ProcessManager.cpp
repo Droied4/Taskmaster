@@ -6,7 +6,12 @@
 ProcessManager::ProcessManager(const std::string &config_path)
     : _config_path(config_path) {
   ASSERT(!_config_path.empty(), "Config path cannot be empty");
-  std::map<std::string, ProgramConfig> configs = _parser.parse(_config_path);
+  std::map<std::string, ProgramConfig> configs;
+  std::string error;
+  if (!_parser.parse(_config_path, configs, error)) {
+    Logs::error() << error << "\n";
+    std::exit(1);
+  }
   for (const auto &[name, config] : configs) {
     _programs[name] = new Program(name, config);
     if (config.autostart) {
@@ -56,7 +61,7 @@ ProcessManager::executeCommand(const std::string &cmd,
   if (cmd == "_get_programs")
     return getPrograms();
   if (params.empty())
-    return "Error: Command '" + cmd + "' requires at least one target.\n";
+    return "Error: Command '" + cmd + "' requires at least one target.";
   std::string response;
   for (const std::string &target : params) {
     if (cmd == "start")
@@ -89,8 +94,14 @@ std::string ProcessManager::getPrograms() {
 void ProcessManager::reloadConfig() {
   Logs::info() << "[ProcessManager] Reloading config from: " << _config_path
                << "\n";
-  std::map<std::string, ProgramConfig> new_configs =
-      _parser.parse(_config_path);
+  std::map<std::string, ProgramConfig> new_configs;
+
+  std::string error;
+  if (!_parser.parse(_config_path, new_configs, error)) {
+    Logs::error() << error << "\n";
+    Logs::warning() << "Keeping existing configuration and running processes\n";
+    return;
+  }
 
   for (auto it = _programs.begin(); it != _programs.end();) {
     if (new_configs.find(it->first) == new_configs.end()) {
