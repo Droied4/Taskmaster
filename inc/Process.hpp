@@ -5,7 +5,15 @@
 #include <sys/types.h>
 #include <vector>
 
-enum class ProcessState { STOPPED, STARTING, RUNNING, STOPPING, BACKOFF, EXITED, FATAL };
+enum class ProcessState {
+  STOPPED,
+  STARTING,
+  RUNNING,
+  STOPPING,
+  BACKOFF,
+  EXITED,
+  FATAL
+};
 
 class Process {
 private:
