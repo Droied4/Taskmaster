@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Logs.hpp"
 #include "Program.hpp"
-#include <iostream>
 
 class ProcessManager;
 

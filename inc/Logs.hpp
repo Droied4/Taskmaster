@@ -1,12 +1,9 @@
 #ifndef LOGS
 #define LOGS
 
-#include <chrono>
-#include <ctime>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
-#include <unistd.h>
+#include <ostream>
 
 class Logs {
 public:

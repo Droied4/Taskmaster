@@ -1,6 +1,8 @@
 #include "Shell.hpp"
 #include <cstring>
 #include <iostream>
+#include <readline/history.h>
+#include <readline/readline.h>
 #include <sstream>
 
 Shell *Shell::instance = nullptr;
@@ -11,7 +13,7 @@ Shell::Shell(Client &client, ResponseFormatter &formatter)
 
   instance = this;
   _commands = {"start",  "stop", "restart", "status",
-               "reload", "exit", "quit", "help"};
+               "reload", "exit", "quit",    "help"};
   rl_attempted_completion_function = Shell::taskmaster_completion;
 }
 

@@ -1,17 +1,8 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#include "Logs.hpp"
-#include "common.hpp"
-#include <cstring>
-#include <fcntl.h>
-#include <iostream>
-#include <memory>
-#include <strings.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
+#include <string>
 #include <sys/un.h>
-
 class Server {
 private:
   int _epfd;

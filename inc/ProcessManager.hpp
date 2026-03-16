@@ -1,8 +1,8 @@
 #pragma once
+
 #include "Command.hpp"
 #include "ConfigParser.hpp"
-#include "Process.hpp"
-#include "Program.hpp"
+#include <string>
 
 class ProcessManager {
 private:

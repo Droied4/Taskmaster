@@ -1,11 +1,6 @@
 #pragma once
 #include "Program.hpp"
 #include <functional>
-#include <iostream>
-#include <map>
-#include <string>
-#include <unordered_map>
-#include <vector>
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>

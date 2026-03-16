@@ -1,4 +1,5 @@
 #include "CommandParser.hpp"
+#include <sstream>
 
 CommandParser::CommandParser() {}
 
@@ -10,22 +11,20 @@ void CommandParser::setCommandParser(std::string input) {
   this->_params = splitParams(input);
 }
 
-std::string CommandParser::getFirstParam(std::string input) {	
+std::string CommandParser::getFirstParam(std::string input) {
   size_t end = input.find(' ');
   std::string cmd = input.substr(0, end);
   return (cmd);
 }
 
-std::string CommandParser::clearInput(std::string input)
-{
-	auto it(input.begin());
-	for (; it != input.end(); it++)
-	{
-		if (*it != ' ')
-			break ;
-	}
-	input.erase(input.begin(), it);
-	return (input);
+std::string CommandParser::clearInput(std::string input) {
+  auto it(input.begin());
+  for (; it != input.end(); it++) {
+    if (*it != ' ')
+      break;
+  }
+  input.erase(input.begin(), it);
+  return (input);
 }
 
 std::vector<std::string> CommandParser::splitParams(std::string input) {
@@ -33,14 +32,13 @@ std::vector<std::string> CommandParser::splitParams(std::string input) {
   std::stringstream ss(input);
   std::string item;
 
-  while (getline(ss, item, ' '))
-  {
-	  if (!item.empty())
-		  params.push_back(item);
+  while (getline(ss, item, ' ')) {
+    if (!item.empty())
+      params.push_back(item);
   }
 
   if (!params.empty())
-	  params.erase(params.begin());
+    params.erase(params.begin());
   return (params);
 }
 

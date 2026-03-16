@@ -1,11 +1,8 @@
 #pragma once
 
-#include "Logs.hpp"
-#include "ProcessManager.hpp"
 #include "CommandParser.hpp"
+#include "ProcessManager.hpp"
 #include "Server.hpp"
-#include <iostream>
-#include <sys/epoll.h>
 
 class Daemon {
 private:

@@ -1,6 +1,10 @@
 #include "Daemon.hpp"
+#include "Logs.hpp"
 #include "Server.hpp"
+#include "common.hpp"
 #include <csignal>
+#include <ostream>
+#include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <unistd.h>
 

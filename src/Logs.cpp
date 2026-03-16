@@ -1,14 +1,13 @@
 #include "Logs.hpp"
+#include <chrono>
 
-Logs::Logs() : _output(&std::cout){
+Logs::Logs() : _output(&std::cout) {
   this->_min_level = Level::INFO;
   this->_enabled = true;
   this->_err = false;
 }
 
-Logs::~Logs() {
-	closeFile();
-}
+Logs::~Logs() { closeFile(); }
 
 Logs &Logs::getInstance() {
   static Logs instance;
@@ -26,28 +25,28 @@ void Logs::printTimeStamp() const {
 void Logs::printLevel(Level level) const {
   switch (level) {
   case Level::ERROR:
-	if (_output == &std::cout)
-    	*_output << "\033[31m[ERROR] \033[0m";
-	else
-    	*_output << "[ERROR]";
+    if (_output == &std::cout)
+      *_output << "\033[31m[ERROR] \033[0m";
+    else
+      *_output << "[ERROR]";
     break;
   case Level::WARNING:
-	if (_output == &std::cout)
-    *_output << "\033[33m[WARNING] \033[0m";
-	else
-    	*_output << "[WARNING]";
+    if (_output == &std::cout)
+      *_output << "\033[33m[WARNING] \033[0m";
+    else
+      *_output << "[WARNING]";
     break;
   case Level::INFO:
-	if (_output == &std::cout)
-    *_output << "\033[34m[INFO] \033[0m";
-	else
-    	*_output << "[INFO]";
+    if (_output == &std::cout)
+      *_output << "\033[34m[INFO] \033[0m";
+    else
+      *_output << "[INFO]";
     break;
   case Level::LDEBUG:
-	if (_output == &std::cout)
-    *_output << "\033[32m[DEBUG] \033[0m";
-	else
-    	*_output << "[DEBUG]";
+    if (_output == &std::cout)
+      *_output << "\033[32m[DEBUG] \033[0m";
+    else
+      *_output << "[DEBUG]";
     break;
   }
 }
@@ -67,10 +66,10 @@ Logs &Logs::operator<<(Level level) {
     printLevel(level);
   } else
     _enabled = false;
-	if (level == Level::ERROR)	
-  		_err = true;
-	else
-		_err = false;
+  if (level == Level::ERROR)
+    _err = true;
+  else
+    _err = false;
   return (*this);
 }
 
@@ -80,21 +79,20 @@ Logs &Logs::operator<<(std::ostream &(*manip)(std::ostream &)) {
   return *this;
 }
 
-void Logs::setFile(std::string filename)
-{
-    Logs &logger = getInstance();
-	 
-		logger._file.open(filename, std::ios::app);
-		if (logger._file.is_open())
-			logger._output = &logger._file;
-		else
-			Logs::warning() << "path: " << filename << " not found. Using default output\n";
+void Logs::setFile(std::string filename) {
+  Logs &logger = getInstance();
+
+  logger._file.open(filename, std::ios::app);
+  if (logger._file.is_open())
+    logger._output = &logger._file;
+  else
+    Logs::warning() << "path: " << filename
+                    << " not found. Using default output\n";
 }
 
-void Logs::closeFile()
-{
-	if (_file.is_open())
-		_file.close();
+void Logs::closeFile() {
+  if (_file.is_open())
+    _file.close();
 }
 
 Logs &Logs::error() { return (getInstance() << Level::ERROR); }

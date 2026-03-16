@@ -1,4 +1,6 @@
 #include "ProcessManager.hpp"
+#include "Logs.hpp"
+#include "Process.hpp"
 #include "common.hpp"
 #include <algorithm>
 #include <set>

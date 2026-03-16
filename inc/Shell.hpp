@@ -2,9 +2,6 @@
 
 #include "Client.hpp"
 #include "ResponseFormatter.hpp"
-#include <readline/history.h>
-#include <readline/readline.h>
-#include <string>
 #include <vector>
 
 class Shell {
