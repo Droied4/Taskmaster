@@ -22,8 +22,12 @@ std::string Client::send(const std::string &command) {
   struct sockaddr_un server_addr;
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sun_family = AF_UNIX;
-  strncpy(server_addr.sun_path, _socket_path.c_str(),
-          sizeof(server_addr.sun_path) - 1);
+
+  size_t len =
+      std::min(_socket_path.length(), sizeof(server_addr.sun_path) - 1);
+  std::copy(_socket_path.begin(), _socket_path.begin() + len,
+            server_addr.sun_path);
+  server_addr.sun_path[len] = '\0';
 
   if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     close(sock);
