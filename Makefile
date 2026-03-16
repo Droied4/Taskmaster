@@ -79,6 +79,9 @@ $(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp Makefile
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) $(LUA_INC) -c $< -o $@ 
 
+fast: 
+	make -j$(nproc)
+
 debug: CFLAGS += -DDEBUG=1
 debug: re
 	@printf "$(YELLOW)DEBUG mode activated$(NC)\n"
