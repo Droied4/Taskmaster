@@ -63,7 +63,7 @@ ProcessManager::executeCommand(const std::string &cmd,
   if (cmd == "_get_programs")
     return getPrograms();
   if (params.empty())
-    return "Error: Command '" + cmd + "' requires at least one target.";
+    return "Error: Command '" + cmd + "' requires at least one target.\n";
   std::string response;
   for (const std::string &target : params) {
     if (cmd == "start")

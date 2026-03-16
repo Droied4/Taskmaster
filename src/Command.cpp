@@ -254,12 +254,12 @@ std::string Reload::execute(std::map<std::string, Program *> &programs,
 Pid::Pid() : Command("pid") {}
 
 std::string Pid::execute(std::map<std::string, Program *> &programs,
-                              const std::string &target) {
+                         const std::string &target) {
 
   (void)programs;
   (void)target;
   std::string pid;
-  pid = std::to_string(getpid()) + "\n"; 
+  pid = std::to_string(getpid()) + "\n";
   return (pid);
 }
 

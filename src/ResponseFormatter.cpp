@@ -26,7 +26,7 @@ void ResponseFormatter::print_response(const std::string &raw_response) const {
   }
 
   if (raw_response.find("Error") == 0) {
-    std::cout << "\033[1;31m" << raw_response << "\033[0m\n";
+    std::cout << "\033[1;31m" << raw_response << "\033[0m";
     return;
   }
 
