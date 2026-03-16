@@ -5,11 +5,6 @@
 Server::Server(int epfd) {
   ASSERT(strlen(SOCK_PATH) > 0, "SOCK_PATH must be declared");
   ASSERT(epfd > 0, "epfd not initialized");
-    if (access(SOCK_PATH, F_OK) == 0) 
-	{
-		std::cerr << "Server already running\n";
-		exit(1);
-	}
   this->_serv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (this->_serv_fd < 0)
     ERROR("Sever fd socket failed!");
@@ -45,14 +40,34 @@ void Server::setServerFd(int fd) { this->_serv_fd = fd; }
 int Server::getServerFd() const { return (this->_serv_fd); }
 
 void Server::bindListen() {
-  Logs::debug() << "Unlinked Sock Path: " << SOCK_PATH << "\n";
-  unlink(SOCK_PATH);
   if (bind(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr),
-           sizeof(this->_serv_addr)) < 0)
-    ERROR("Bind failed!\n");
+			  sizeof(this->_serv_addr)) < 0)
+  {
+        if (errno == EADDRINUSE)
+		{
+
+	  int test = socket(AF_UNIX, SOCK_STREAM, 0);
+	  if (connect(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr),
+			  sizeof(this->_serv_addr)) == 0)
+	  {
+		  close(test);
+		  std::cerr << "Server already running\n";
+		  exit(1);
+	  }
+	  close(test);
+	  Logs::debug() << "Unlinked Sock Path: " << SOCK_PATH << "\n";
+	  unlink(SOCK_PATH);
+  		if (bind(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr),
+			  sizeof(this->_serv_addr)) < 0)
+		{
+			Logs::error() << "Bind failed\n";
+	  		exit(1);
+		}
+		}
+  }
   Logs::info() << "Server binded on route: " << SOCK_PATH << "\n";
-  if (listen(this->_serv_fd, 0) < 0)
-    ERROR("Server listen failed!\n");
+  if (listen(this->_serv_fd, 1) < 0)
+	  ERROR("Server listen failed!\n");
   Logs::info() << "Server is now Listening!\n";
 }
 
