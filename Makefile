@@ -8,6 +8,8 @@ OS = $(shell uname)
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++23 -I $(INCLUDE_PATH) -MMD -MP
 
+CFLAGS += -fsanitize=address,leak,undefined -g
+
 LUA_INC = -I/usr/include/lua5.4
 LDFLAGS = -llua
 
