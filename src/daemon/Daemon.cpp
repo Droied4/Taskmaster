@@ -13,8 +13,6 @@ Daemon::Daemon(struct Config conf)
       _serv(_epfd), _manager(conf.config_path) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
-  Logs::setFile(conf.logfile);
-  Logs::setMinLevel(conf.loglevel);
 }
 
 Daemon::~Daemon() {}
