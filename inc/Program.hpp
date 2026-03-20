@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -42,7 +43,7 @@ class Program {
 private:
   std::string _name;
   ProgramConfig _config;
-  std::vector<Process *> _processes;
+  std::vector<std::unique_ptr<Process>> _processes;
   bool _restarting;
 
 public:
@@ -62,5 +63,6 @@ public:
 
   const std::string &getName() const;
   const ProgramConfig &getConfig() const;
-  const std::vector<Process *> &getProcesses() const;
+  std::vector<Process *> getProcesses() const;
+  bool isFullyStopped() const;
 };

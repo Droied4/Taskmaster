@@ -4,10 +4,11 @@
 #include "common.hpp"
 #include <algorithm>
 #include <csignal>
+#include <memory>
 #include <string>
 
 static std::vector<Process *>
-resolveTarget(std::map<std::string, Program *> &programs,
+resolveTarget(std::map<std::string, std::unique_ptr<Program>> &programs,
               const std::string &target, Program **out_prog,
               std::string &error) {
   std::vector<Process *> result;
@@ -20,7 +21,7 @@ resolveTarget(std::map<std::string, Program *> &programs,
       return result;
     }
     if (out_prog)
-      *out_prog = it->second;
+      *out_prog = it->second.get();
     for (Process *proc : it->second->getProcesses()) {
       ASSERT(proc != nullptr, "Process pointer cannot be null");
       result.push_back(proc);
@@ -35,7 +36,7 @@ resolveTarget(std::map<std::string, Program *> &programs,
       return result;
     }
     if (out_prog)
-      *out_prog = it->second;
+      *out_prog = it->second.get();
     if (proc_name == "*") {
       for (Process *proc : it->second->getProcesses())
         result.push_back(proc);
@@ -107,11 +108,11 @@ static std::string formatStateInfo(Process *proc) {
 }
 
 static size_t
-getMaxNameLength(const std::map<std::string, Program *> &programs) {
+getMaxNameLength(const std::map<std::string, std::unique_ptr<Program>> &programs) {
   size_t max_len = 0;
   for (const auto &[prog_name, prog] : programs) {
     for (Process *proc : prog->getProcesses()) {
-      std::string display_name = formatDisplayName(proc, prog);
+      std::string display_name = formatDisplayName(proc, prog.get());
       max_len = std::max(max_len, display_name.length());
     }
   }
@@ -143,7 +144,7 @@ Command::~Command() {}
 
 Start::Start() : Command("start") {}
 
-std::string Start::execute(std::map<std::string, Program *> &programs,
+std::string Start::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                            const std::string &target) {
   ASSERT(!target.empty(), "Start command requires a target");
 
@@ -173,7 +174,7 @@ std::string Start::execute(std::map<std::string, Program *> &programs,
 
 Stop::Stop() : Command("stop") {}
 
-std::string Stop::execute(std::map<std::string, Program *> &programs,
+std::string Stop::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                           const std::string &target) {
   ASSERT(!target.empty(), "Stop command requires a target");
   std::string error;
@@ -194,7 +195,7 @@ std::string Stop::execute(std::map<std::string, Program *> &programs,
 
 Status::Status() : Command("status") {}
 
-std::string Status::execute(std::map<std::string, Program *> &programs,
+std::string Status::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                             const std::string &target) {
   if (programs.empty()) {
     return "No programs configured\n";
@@ -206,7 +207,7 @@ std::string Status::execute(std::map<std::string, Program *> &programs,
   if (target.empty() || target == "all") {
     for (const auto &[prog_name, prog] : programs) {
       for (Process *proc : prog->getProcesses()) {
-        result += formatStatusLine(proc, prog, name_width);
+        result += formatStatusLine(proc, prog.get(), name_width);
       }
     }
     return result;
@@ -225,7 +226,7 @@ std::string Status::execute(std::map<std::string, Program *> &programs,
 
 Restart::Restart() : Command("restart") {}
 
-std::string Restart::execute(std::map<std::string, Program *> &programs,
+std::string Restart::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                              const std::string &target) {
   ASSERT(!target.empty(), "Restart command requires a target");
 
@@ -243,7 +244,7 @@ std::string Restart::execute(std::map<std::string, Program *> &programs,
 
 Reload::Reload() : Command("reload") {}
 
-std::string Reload::execute(std::map<std::string, Program *> &programs,
+std::string Reload::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                             const std::string &target) {
   (void)programs;
   (void)target;
@@ -254,7 +255,7 @@ std::string Reload::execute(std::map<std::string, Program *> &programs,
 
 Pid::Pid() : Command("pid") {}
 
-std::string Pid::execute(std::map<std::string, Program *> &programs,
+std::string Pid::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                          const std::string &target) {
 
   (void)programs;
@@ -266,7 +267,7 @@ std::string Pid::execute(std::map<std::string, Program *> &programs,
 
 Shutdown::Shutdown() : Command("shutdown") {}
 
-std::string Shutdown::execute(std::map<std::string, Program *> &programs,
+std::string Shutdown::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                               const std::string &target) {
   (void)programs;
   (void)target;

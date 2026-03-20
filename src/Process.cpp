@@ -96,7 +96,7 @@ bool Process::spawn() {
 
     close(error_pipe[0]);
 
-    // setsid();
+    setpgid(0, 0); // crea su propio grupo de procesos para el fg
 
     umask(_config.umask);
 
@@ -107,16 +107,17 @@ bool Process::spawn() {
         _exit(1);
       }
     }
+
     // esto probablemente fixee el tema de que la terminal queda colgada cuando
     // se cierra abruptamente
-    // int fd_in = open("/dev/null", O_RDONLY); if (fd_in
-    // < 0) {
-    //   int err = errno;
-    //   write(error_pipe[1], &err, sizeof(err));
-    //   _exit(1);
-    // }
-    // dup2(fd_in, STDIN_FILENO);
-    // close(fd_in);
+    int fd_in = open("/dev/null", O_RDONLY);
+    if (fd_in < 0) {
+      int err = errno;
+      write(error_pipe[1], &err, sizeof(err));
+      _exit(1);
+    }
+    dup2(fd_in, STDIN_FILENO);
+    close(fd_in);
 
     const char *out_path =
         _config.stdout_path.empty() ? "/dev/null" : _config.stdout_path.c_str();
@@ -199,24 +200,6 @@ void Process::killProcess() {
   }
 }
 
-pid_t Process::getPid() const { return _pid; }
-
-ProcessState Process::getState() const { return _state; }
-
-const std::string &Process::getName() const { return _name; }
-
-const std::string &Process::getProgramName() const { return _program_name; }
-
-const ProgramConfig &Process::getConfig() const { return _config; }
-
-time_t Process::getStartTime() const { return _start_time; }
-
-time_t Process::getEndTime() const { return _end_time; }
-
-int Process::getRetries() const { return _retries; }
-
-const std::string &Process::getStatusMsg() const { return _status_msg; }
-
 std::string Process::getUptime() const {
   if (_state != ProcessState::RUNNING && _state != ProcessState::STARTING) {
     return "";
@@ -260,3 +243,21 @@ void Process::setStatusMsg(const std::string &msg) { _status_msg = msg; }
 void Process::incrementRetries() { _retries++; }
 
 void Process::resetRetries() { _retries = 0; }
+
+pid_t Process::getPid() const { return _pid; }
+
+ProcessState Process::getState() const { return _state; }
+
+const std::string &Process::getName() const { return _name; }
+
+const std::string &Process::getProgramName() const { return _program_name; }
+
+const ProgramConfig &Process::getConfig() const { return _config; }
+
+time_t Process::getStartTime() const { return _start_time; }
+
+time_t Process::getEndTime() const { return _end_time; }
+
+int Process::getRetries() const { return _retries; }
+
+const std::string &Process::getStatusMsg() const { return _status_msg; }
