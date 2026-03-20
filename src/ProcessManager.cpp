@@ -16,7 +16,7 @@ ProcessManager::ProcessManager(const std::string &config_path)
     std::exit(1);
   }
   for (const auto &[name, config] : configs) {
-    _programs[name] = new Program(name, config);
+    _programs[name] = std::make_unique<Program>(name, config);
     if (config.autostart) {
       _programs[name]->start();
     }
@@ -24,14 +24,20 @@ ProcessManager::ProcessManager(const std::string &config_path)
 }
 
 ProcessManager::~ProcessManager() {
-  for (auto &[name, prog] : _programs) {
-    delete prog;
-  }
   _programs.clear();
+  _graveyard.clear();
 }
 
 Process *ProcessManager::findProcessByPid(pid_t pid) {
   for (const auto &[name, prog] : _programs) {
+    for (Process *proc : prog->getProcesses()) {
+      if (proc->getPid() == pid) {
+        return proc;
+      }
+    }
+  }
+
+  for (const auto &prog : _graveyard) {
     for (Process *proc : prog->getProcesses()) {
       if (proc->getPid() == pid) {
         return proc;
@@ -45,7 +51,7 @@ Program *ProcessManager::findProgramByProcess(Process *proc) {
   for (const auto &[name, prog] : _programs) {
     for (Process *p : prog->getProcesses()) {
       if (p == proc)
-        return prog;
+        return prog.get();
     }
   }
   return nullptr;
@@ -117,7 +123,7 @@ void ProcessManager::reloadConfig() {
   for (auto it = _programs.begin(); it != _programs.end();) {
     if (new_configs.find(it->first) == new_configs.end()) {
       it->second->stop();
-      delete it->second;
+      _graveyard.push_back(std::move(it->second));
       it = _programs.erase(it);
     } else {
       ++it;
@@ -127,14 +133,14 @@ void ProcessManager::reloadConfig() {
   for (const auto &[name, new_cfg] : new_configs) {
     auto it = _programs.find(name);
     if (it == _programs.end()) {
-      _programs[name] = new Program(name, new_cfg);
+      _programs[name] = std::make_unique<Program>(name, new_cfg);
       if (new_cfg.autostart)
         _programs[name]->start();
     } else {
       if (it->second->getConfig() != new_cfg) {
         it->second->stop();
-        delete it->second;
-        _programs[name] = new Program(name, new_cfg);
+        _graveyard.push_back(std::move(it->second));
+        _programs[name] = std::make_unique<Program>(name, new_cfg);
         _programs[name]->start();
       }
     }
@@ -265,6 +271,16 @@ void ProcessManager::reap() {
         Logs::warning() << "[ProcessManager] " << proc->getName()
                         << " exited with unexpected code " << exit_code << "\n";
       }
+    }
+  }
+
+  for (auto it = _graveyard.begin(); it != _graveyard.end();) {
+    if ((*it)->isFullyStopped()) {
+      Logs::debug() << "[ProcessManager] Freeing memory for old program: "
+                    << (*it)->getName() << "\n";
+      it = _graveyard.erase(it);
+    } else {
+      ++it;
     }
   }
 }

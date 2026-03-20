@@ -2,12 +2,14 @@
 
 #include "Command.hpp"
 #include "ConfigParser.hpp"
+#include <memory>
 #include <string>
 
 class ProcessManager {
 private:
   std::string _config_path;
-  std::map<std::string, Program *> _programs;
+  std::map<std::string, std::unique_ptr<Program>> _programs;
+  std::vector<std::unique_ptr<Program>> _graveyard;
   ConfigParser _parser;
 
   Start _start_cmd;

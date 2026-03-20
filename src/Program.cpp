@@ -21,30 +21,27 @@ Program::Program(const std::string &name, const ProgramConfig &config)
       snprintf(suffix, sizeof(suffix), "_%02d", i);
       proc_name = _name + suffix;
     }
-    _processes.push_back(new Process(proc_name, _name, _config));
+    _processes.push_back(std::make_unique<Process>(proc_name, _name, _config));
   }
 }
 
 Program::~Program() {
   Logs::info() << "[Program] Cleaning up " << _name << "...\n";
-  for (Process *p : _processes) {
-    delete p;
-  }
   _processes.clear();
 }
 
 void Program::start() {
   Logs::info() << "[Program] Starting " << _name << " (" << _config.numprocs
                << " processes)...\n";
-  for (Process *p : _processes) {
-    p->spawn();
+  for (auto &proc : _processes) {
+    proc->spawn();
   }
 }
 
 void Program::stop() {
   Logs::info() << "[Program] Stopping " << _name << "...\n";
-  for (Process *p : _processes) {
-    p->killProcess();
+  for (auto &proc : _processes) {
+    proc->killProcess();
   }
 }
 
@@ -68,15 +65,34 @@ void Program::restartProcesses(const std::vector<Process *> &procs) {
 
 void Program::restart() {
   Logs::info() << "[Program] Restarting " << _name << "...\n";
-  restartProcesses(_processes);
+  std::vector<Process *> procs;
+  for (auto &proc : _processes) {
+    procs.push_back(proc.get());
+  }
+  restartProcesses(procs);
+}
+
+bool Program::isFullyStopped() const {
+  for (const auto &proc : _processes) {
+    ProcessState s = proc->getState();
+    if (s == ProcessState::RUNNING || s == ProcessState::STARTING ||
+        s == ProcessState::BACKOFF) {
+      return false;
+    }
+  }
+  return true;
 }
 
 const std::string &Program::getName() const { return _name; }
 
 const ProgramConfig &Program::getConfig() const { return _config; }
 
-const std::vector<Process *> &Program::getProcesses() const {
-  return _processes;
+std::vector<Process *> Program::getProcesses() const {
+  std::vector<Process *> result;
+  for (const auto &proc : _processes) {
+    result.push_back(proc.get());
+  }
+  return result;
 }
 
 void Program::setRestarting(bool val) { _restarting = val; }
