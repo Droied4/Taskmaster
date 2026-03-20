@@ -12,6 +12,7 @@ CFLAGS += -fsanitize=address,leak,undefined -g
 
 LUA_INC = -I/usr/include/lua5.4
 LDFLAGS = -llua5.4
+SHELL := /bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               SOURCES                                        #
@@ -93,6 +94,9 @@ $(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp Makefile
 	@printf "$(CYAN)Compiling $@$(NC)\n";
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -I $(COMMON_INC_PATH) -c $< -o $@ 
+
+autocomplete:
+	complete -W "--help -h --configuration -c --logfile -l --loglevel -e --nodaemon -n --version -v" ./$(NAME) 
 
 fast: 
 	make -j$(nproc)
