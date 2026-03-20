@@ -12,46 +12,57 @@ resolveTarget(std::map<std::string, std::unique_ptr<Program>> &programs,
               const std::string &target, Program **out_prog,
               std::string &error) {
   std::vector<Process *> result;
+
+  if (target == "all") {
+    if (out_prog)
+      *out_prog = nullptr;
+
+    for (const auto &[prog_name, prog] : programs) {
+      for (Process *proc : prog->getProcesses()) {
+        ASSERT(proc != nullptr, "Process pointer cannot be null");
+        result.push_back(proc);
+      }
+    }
+    return result;
+  }
+
   size_t colon = target.find(':');
 
   if (colon == std::string::npos) {
-    auto it = programs.find(target);
-    if (it == programs.end()) {
-      error = "Error: Program '" + target + "' not found\n";
-      return result;
-    }
-    if (out_prog)
-      *out_prog = it->second.get();
+    error = "Error: no such process '" + target + "'\n";
+    return result;
+  }
+
+  std::string prog_name = target.substr(0, colon);
+  std::string proc_name = target.substr(colon + 1);
+
+  auto it = programs.find(prog_name);
+  if (it == programs.end()) {
+    error = "Error: Program group '" + prog_name + "' not found\n";
+    return result;
+  }
+
+  if (out_prog)
+    *out_prog = it->second.get();
+
+  if (proc_name == "*") {
     for (Process *proc : it->second->getProcesses()) {
       ASSERT(proc != nullptr, "Process pointer cannot be null");
       result.push_back(proc);
     }
-  } else {
-    std::string prog_name = target.substr(0, colon);
-    std::string proc_name = target.substr(colon + 1);
-
-    auto it = programs.find(prog_name);
-    if (it == programs.end()) {
-      error = "Error: Program '" + prog_name + "' not found\n";
-      return result;
-    }
-    if (out_prog)
-      *out_prog = it->second.get();
-    if (proc_name == "*") {
-      for (Process *proc : it->second->getProcesses())
-        result.push_back(proc);
-      return result;
-    }
-    for (Process *proc : it->second->getProcesses()) {
-      ASSERT(proc != nullptr, "Process pointer cannot be null");
-      if (proc->getName() == proc_name) {
-        result.push_back(proc);
-        return result;
-      }
-    }
-    error = "Error: Process '" + proc_name + "' not found in program '" +
-            prog_name + "'\n";
+    return result;
   }
+
+  for (Process *proc : it->second->getProcesses()) {
+    ASSERT(proc != nullptr, "Process pointer cannot be null");
+    if (proc->getName() == proc_name) {
+      result.push_back(proc);
+      return result;
+    }
+  }
+
+  error = "Error: Process '" + proc_name + "' not found in group '" +
+          prog_name + "'\n";
   return result;
 }
 
@@ -77,9 +88,6 @@ static std::string stateToString(ProcessState state) {
 }
 
 static std::string formatDisplayName(Process *proc, Program *prog) {
-  if (prog->getConfig().numprocs == 1) {
-    return proc->getName();
-  }
   return prog->getName() + ":" + proc->getName();
 }
 
@@ -107,8 +115,8 @@ static std::string formatStateInfo(Process *proc) {
   }
 }
 
-static size_t
-getMaxNameLength(const std::map<std::string, std::unique_ptr<Program>> &programs) {
+static size_t getMaxNameLength(
+    const std::map<std::string, std::unique_ptr<Program>> &programs) {
   size_t max_len = 0;
   for (const auto &[prog_name, prog] : programs) {
     for (Process *proc : prog->getProcesses()) {
@@ -144,8 +152,9 @@ Command::~Command() {}
 
 Start::Start() : Command("start") {}
 
-std::string Start::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                           const std::string &target) {
+std::string
+Start::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+               const std::string &target) {
   ASSERT(!target.empty(), "Start command requires a target");
 
   std::string error;
@@ -174,8 +183,9 @@ std::string Start::execute(std::map<std::string, std::unique_ptr<Program>> &prog
 
 Stop::Stop() : Command("stop") {}
 
-std::string Stop::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                          const std::string &target) {
+std::string
+Stop::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+              const std::string &target) {
   ASSERT(!target.empty(), "Stop command requires a target");
   std::string error;
 
@@ -195,8 +205,9 @@ std::string Stop::execute(std::map<std::string, std::unique_ptr<Program>> &progr
 
 Status::Status() : Command("status") {}
 
-std::string Status::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                            const std::string &target) {
+std::string
+Status::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                const std::string &target) {
   if (programs.empty()) {
     return "No programs configured\n";
   }
@@ -204,7 +215,7 @@ std::string Status::execute(std::map<std::string, std::unique_ptr<Program>> &pro
   std::string result = "";
   size_t name_width = getMaxNameLength(programs);
 
-  if (target.empty() || target == "all") {
+  if (target == "all" || target.empty()) {
     for (const auto &[prog_name, prog] : programs) {
       for (Process *proc : prog->getProcesses()) {
         result += formatStatusLine(proc, prog.get(), name_width);
@@ -226,8 +237,9 @@ std::string Status::execute(std::map<std::string, std::unique_ptr<Program>> &pro
 
 Restart::Restart() : Command("restart") {}
 
-std::string Restart::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                             const std::string &target) {
+std::string
+Restart::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                 const std::string &target) {
   ASSERT(!target.empty(), "Restart command requires a target");
 
   std::string error;
@@ -244,8 +256,9 @@ std::string Restart::execute(std::map<std::string, std::unique_ptr<Program>> &pr
 
 Reload::Reload() : Command("reload") {}
 
-std::string Reload::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                            const std::string &target) {
+std::string
+Reload::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                const std::string &target) {
   (void)programs;
   (void)target;
 
@@ -255,8 +268,9 @@ std::string Reload::execute(std::map<std::string, std::unique_ptr<Program>> &pro
 
 Pid::Pid() : Command("pid") {}
 
-std::string Pid::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                         const std::string &target) {
+std::string
+Pid::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+             const std::string &target) {
 
   (void)programs;
   (void)target;
@@ -267,11 +281,43 @@ std::string Pid::execute(std::map<std::string, std::unique_ptr<Program>> &progra
 
 Shutdown::Shutdown() : Command("shutdown") {}
 
-std::string Shutdown::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                              const std::string &target) {
+std::string
+Shutdown::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                  const std::string &target) {
   (void)programs;
   (void)target;
 
   kill(getpid(), SIGTERM);
   return "taskmasterd: shutting down...\n";
 }
+
+Help::Help() : Command("help") {}
+
+std::string
+Help::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+              const std::string &target) {
+  (void)programs;
+
+  if (target.empty()) {
+    return "default commands (type help <topic>):\n"
+           "=====================================\n"
+           "start stop restart status reload pid shutdown help \n";
+  }
+
+  if (target == "start") {
+    return "start <name>          Start a process\n"
+           "start <gname:*>       Start all processes in a group\n"
+           "start <name> <name>   Start multiple processes\n"
+           "start all             Start all processes\n";
+  }
+  return "No help available for '" + target + "'\n";
+}
+
+// "  start <target>   - Start a program or process\n"
+// "  stop <target>    - Stop a program or process\n"
+// "  restart <target> - Restart a program or process\n"
+// "  status [target]  - Show status of all or specific program/process\n"
+// "  reload           - Reload the configuration file\n"
+// "  pid              - Show the PID of the taskmasterd daemon\n"
+// "  shutdown         - Shutdown the taskmasterd daemon\n"
+// "  help             - Show this help message\n";
