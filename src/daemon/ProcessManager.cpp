@@ -88,8 +88,10 @@ ProcessManager::executeCommand(const std::string &cmd,
     return "Error: Command '" + cmd + "' requires at least one target.\n";
   }
 
+  static std::set<std::string> no_params_cmd = {"reload", "shutdown"};
+
   std::string response = "";
-  if (params.empty()) {
+  if (params.empty() || no_params_cmd.find(cmd) != no_params_cmd.end()) {
     response += it->second->execute(_programs, "");
   } else {
     for (const std::string &target : params) {
