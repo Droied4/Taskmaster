@@ -1,5 +1,6 @@
 #include "Logs.hpp"
 #include <chrono>
+#include <iomanip>
 
 Logs::Logs() : _output(&std::cout) {
   this->_min_level = Level::INFO;

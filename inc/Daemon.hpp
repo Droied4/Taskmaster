@@ -3,11 +3,20 @@
 #include "CommandParser.hpp"
 #include "ProcessManager.hpp"
 #include "Server.hpp"
+#include "Logs.hpp"
+
+struct Config {
+    std::string config_path = "config.lua";
+    std::string logfile;
+    Logs::Level loglevel = Logs::Level::INFO;
+    bool daemonize = true;
+};
 
 class Daemon {
 private:
   int _epfd;
   int _sig_fd;
+  bool _daemon;
   Server _serv;
   ProcessManager &_manager;
   CommandParser _cparser;
@@ -21,6 +30,8 @@ public:
   ~Daemon();
 
   static constexpr int EVENTS_SIZE = 64;
+  void setDaemon(bool value);
 
   void run();
 };
+
