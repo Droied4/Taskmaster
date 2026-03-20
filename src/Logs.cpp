@@ -75,7 +75,7 @@ Logs &Logs::operator<<(Level level) {
 
 Logs &Logs::operator<<(std::ostream &(*manip)(std::ostream &)) {
   if (_enabled)
-    manip(std::cout);
+    manip(*_output);
   return *this;
 }
 
