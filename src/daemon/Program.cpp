@@ -14,13 +14,9 @@ Program::Program(const std::string &name, const ProgramConfig &config)
 
   for (int i = 0; i < _config.numprocs; ++i) {
     std::string proc_name;
-    if (_config.numprocs == 1) {
-      proc_name = _name;
-    } else {
-      char suffix[16];
-      snprintf(suffix, sizeof(suffix), "_%02d", i);
-      proc_name = _name + suffix;
-    }
+    char suffix[16];
+    snprintf(suffix, sizeof(suffix), "_%02d", i);
+    proc_name = _name + suffix;
     _processes.push_back(std::make_unique<Process>(proc_name, _name, _config));
   }
 }
