@@ -31,7 +31,7 @@ CLIENT_INC_PATH = $(INCLUDE_PATH)/client
 
 DAEMON_SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Daemon.cpp Command.cpp CommandParser.cpp ProcessManager.cpp
 
-CLIENT_SOURCES = Cli.cpp ResponseFormatter.cpp Shell.cpp Client.cpp
+CLIENT_SOURCES = main.cpp ResponseFormatter.cpp Shell.cpp Client.cpp
 
 COMMON_SOURCES = Logs.cpp
 
