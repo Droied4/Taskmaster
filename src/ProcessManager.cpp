@@ -124,6 +124,9 @@ void ProcessManager::reloadConfig() {
     if (new_configs.find(it->first) == new_configs.end()) {
       it->second->stop();
       _graveyard.push_back(std::move(it->second));
+      Logs::info() << it->first
+                   << " removed from config, stopping and removing from active "
+                      "programs\n";
       it = _programs.erase(it);
     } else {
       ++it;
@@ -134,10 +137,12 @@ void ProcessManager::reloadConfig() {
     auto it = _programs.find(name);
     if (it == _programs.end()) {
       _programs[name] = std::make_unique<Program>(name, new_cfg);
+      Logs::info() << name << " added to config, creating new program\n";
       if (new_cfg.autostart)
         _programs[name]->start();
     } else {
       if (it->second->getConfig() != new_cfg) {
+        Logs::info() << name << " configuration changed, restarting program\n";
         it->second->stop();
         _graveyard.push_back(std::move(it->second));
         _programs[name] = std::make_unique<Program>(name, new_cfg);
@@ -245,6 +250,7 @@ void ProcessManager::reap() {
         proc->setEndTime(time(NULL));
         proc->setStatusMsg("Stopped");
         proc->resetRetries();
+        proc->resetStopStartTime();
       }
       continue;
     }
@@ -259,6 +265,7 @@ void ProcessManager::reap() {
       handleProcessRestart(proc);
     } else {
       proc->setEndTime(time(NULL));
+      proc->resetStopStartTime();
       if (isExpectedExitCode(exit_code, proc->getConfig().exitcodes)) {
         proc->setState(ProcessState::EXITED);
         proc->resetRetries();
@@ -295,6 +302,14 @@ void ProcessManager::updateRunningStates() {
           proc->resetRetries();
           Logs::debug() << "[ProcessManager] " << proc->getName()
                         << " is now RUNNING (starttime reached)\n";
+        }
+      } else if (proc->getState() == ProcessState::STOPPING) {
+        time_t stop_elapsed = now - proc->getStopStartTime();
+        if (stop_elapsed >= proc->getConfig().stoptime) {
+          Logs::info() << "[ProcessManager] " << proc->getName()
+                       << " did not stop gracefully after "
+                       << proc->getConfig().stoptime << "s, sending SIGKILL\n";
+          kill(proc->getPid(), SIGKILL);
         }
       }
     }
