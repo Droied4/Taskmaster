@@ -15,8 +15,9 @@ public:
   Command &operator=(const Command &obj) = delete;
   virtual ~Command();
 
-  virtual std::string execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                              const std::string &target) = 0;
+  virtual std::string
+  execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+          const std::string &target) = 0;
 };
 
 class Start : public Command {
@@ -64,6 +65,13 @@ public:
 class Shutdown : public Command {
 public:
   Shutdown();
+  std::string execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                      const std::string &target) override;
+};
+
+class Help : public Command {
+public:
+  Help();
   std::string execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                       const std::string &target) override;
 };
