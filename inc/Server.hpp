@@ -3,7 +3,6 @@
 #include <sys/un.h>
 class Server {
 private:
-  int _epfd;
   int _serv_fd;
   struct sockaddr_un _serv_addr;
 
@@ -14,8 +13,8 @@ public:
   static constexpr int BUFFER_SIZE = 1024;
 
   Server(int epfd);
-  Server(const Server &obj);
-  Server &operator=(const Server &obj);
+  Server(const Server &obj) = delete;
+  Server &operator=(const Server &obj) = delete;
   ~Server();
 
   void acceptConnection(int epfd);

@@ -28,14 +28,6 @@ Server::Server(int epfd) {
   epoll_ctl(epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
 }
 
-Server::Server(const Server &obj) { *this = obj; }
-
-Server &Server::operator=(const Server &obj) {
-  if (this != &obj)
-    this->_serv_fd = obj.getServerFd();
-  return (*this);
-}
-
 Server::~Server() {
   remove(SOCK_PATH);
   close(this->_serv_fd);
