@@ -37,11 +37,11 @@ static void logLevel(std::string optarg)
 		
 }
 
-static void flagCases(int ac, char *av[], Daemon daemon)
+static void flagCases(int ac, char *av[], Daemon *daemon)
 {
 	std::vector<std::string> configs;
 
-	const char* short_opts = ":?hvc:l:e:";
+	const char* short_opts = ":?hnvc:l:e:";
 
 	const option long_opts[] = {
 		{"help", no_argument, nullptr, 'h'},
@@ -71,7 +71,7 @@ static void flagCases(int ac, char *av[], Daemon daemon)
 				logLevel(optarg);
 				break ;
 			case 'n':
-				daemon.setDaemon(false);
+				daemon->setDaemon(false);
 				break ;
 		}
 	}
@@ -83,7 +83,7 @@ int main(int ac, char *av[]) {
   ProcessManager manager(config_path);
   Daemon daemon(manager);
   
-  flagCases(ac, av, daemon);
+  flagCases(ac, av, &daemon);
 
   daemon.run(); 
   return 0;
