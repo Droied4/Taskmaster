@@ -3,22 +3,55 @@
 #include "ProcessManager.hpp"
 #include <getopt.h>
 
-void help(void)
+static void help(void)
 {
-	std::cout << "--help \t\t-h -- print this ussage message and exit\n\
-		--configuration \t\t-c -- configuration file path\n\
-		--logfile \t\t-l -- logfile  path\n\
-		--loglevel \t\t-e -- log level\n\
-		--nodaemon \t\t-n -- run in the foreground\n\
-		--version \t\t-v -- print taskmasterd version number and exit\n\
-		\n";
+	std::cout << "\
+--help			-h -- print this ussage message and exit\n\
+--configuration		-c -- configuration file path\n\
+--logfile 		-l -- logfile  path\n\
+--loglevel 		-e -- log level\n\
+--nodaemon 		-n -- run in the foreground\n\
+--version 		-v -- print taskmasterd version number and exit\n\
+\n";
+}
+
+static void version(void)
+{
+	std::cout << "Taskmasterd v0.1\n";
+}
+
+static void logFile(std::string optarg)
+{
+	Logs::setFile(optarg);
+}
+
+static void logLevel(std::string optarg)
+{
+	if (optarg == "debug")
+  		Logs::setMinLevel(Logs::Level::LDEBUG);
+	else if (optarg == "info")
+  		Logs::setMinLevel(Logs::Level::INFO);
+	else if (optarg == "warning")
+  		Logs::setMinLevel(Logs::Level::WARNING);
+	else if (optarg == "error")
+  		Logs::setMinLevel(Logs::Level::ERROR);
+	else
+	{
+		std::cout << "Choose a valid level:\n\
+	- debug\n\
+	- info\n\
+	- warning\n\
+	- error\n";
+		exit(1);
+	}
+		
 }
 
 static void flagCases(int ac, char *av[])
 {
 	std::vector<std::string> configs;
 
-	const char* short_opts = ":?h";
+	const char* short_opts = ":?hvc:l:e:";
 
 	const option long_opts[] = {
 		{"help", no_argument, nullptr, 'h'},
@@ -38,24 +71,23 @@ static void flagCases(int ac, char *av[])
 			case 'h':
 				help();
 				exit(1);
-			default:
-				std::cerr << "Uso: " << argv[0] << " [-c config]\n";
-				return 1;
+			case 'v':
+				version();
+				exit(1);
+			case 'l':
+				logFile(optarg);
+				break ;
+			case 'e':
+				logLevel(optarg);
+				break ;
 		}
 	}
 }
 
 int main(int ac, char *av[]) {
-#ifdef DEBUG
-  Logs::setMinLevel(Logs::Level::LDEBUG);
-#endif
 	
   flagCases(ac, av);
-  Logs::setFile("/home/droied/42/taskmaster/logs/logs.txt");
   std::string config_path = "config.lua";
-  if (argc > 1) {
-    config_path = argv[1];
-  }
 
   ProcessManager manager(config_path);
 
