@@ -103,8 +103,12 @@ void Shell::fetch_programs() {
 void Shell::fetch_commands() {
   std::string response = _client.send("_get_commands");
 
+  static bool is_first_call = true;
+
   if (response.find("Error:") == 0) {
-    std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
+    if (is_first_call)
+      std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
+    is_first_call = false;
     return;
   }
 
@@ -147,5 +151,6 @@ void Shell::run() {
 
     free(line);
     fetch_programs();
+    fetch_commands();
   }
 }
