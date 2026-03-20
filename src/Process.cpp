@@ -14,7 +14,7 @@ Process::Process(const std::string &name, const std::string &program_name,
                  const ProgramConfig &config)
     : _name(name), _program_name(program_name), _status_msg("Not started"),
       _config(config), _pid(0), _state(ProcessState::STOPPED), _retries(0),
-      _start_time(0), _end_time(0) {
+      _start_time(0), _end_time(0), _stop_start_time(0) {
   ASSERT(!_name.empty(), "Process must have a name");
   ASSERT(!_program_name.empty(), "Process must have a program name");
   ASSERT(!_config.cmd.empty(), "Process must have a command");
@@ -193,8 +193,10 @@ void Process::killProcess() {
                   << _name << "\n";
     kill(_pid, _config.stopsignal);
     _state = ProcessState::STOPPING;
+    _stop_start_time = time(NULL);
     Logs::debug() << "[Process] " << _name << " killed with signal "
-                  << _config.stopsignal << "\n";
+                  << _config.stopsignal << " (stoptime: " << _config.stoptime
+                  << "s)\n";
   } else {
     Logs::debug() << "[killprocess] skipped (wrong state or no pid)\n";
   }
@@ -244,6 +246,8 @@ void Process::incrementRetries() { _retries++; }
 
 void Process::resetRetries() { _retries = 0; }
 
+void Process::resetStopStartTime() { _stop_start_time = 0; }
+
 pid_t Process::getPid() const { return _pid; }
 
 ProcessState Process::getState() const { return _state; }
@@ -257,6 +261,8 @@ const ProgramConfig &Process::getConfig() const { return _config; }
 time_t Process::getStartTime() const { return _start_time; }
 
 time_t Process::getEndTime() const { return _end_time; }
+
+time_t Process::getStopStartTime() const { return _stop_start_time; }
 
 int Process::getRetries() const { return _retries; }
 
