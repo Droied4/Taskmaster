@@ -23,6 +23,7 @@ private:
   int _retries;
   time_t _start_time;
   time_t _end_time;
+  time_t _stop_start_time;
 
   std::vector<char *> build_envp() const;
   std::vector<char *> build_argv() const;
@@ -45,6 +46,7 @@ public:
   const ProgramConfig &getConfig() const;
   time_t getStartTime() const;
   time_t getEndTime() const;
+  time_t getStopStartTime() const;
   int getRetries() const;
   const std::string &getStatusMsg() const;
   std::string getUptime() const;
@@ -53,6 +55,7 @@ public:
   void setState(ProcessState state);
   void setEndTime(time_t t);
   void setStatusMsg(const std::string &msg);
+  void resetStopStartTime();
   void incrementRetries();
   void resetRetries();
 };
