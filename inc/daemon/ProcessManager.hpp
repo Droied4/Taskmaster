@@ -12,13 +12,7 @@ private:
   std::vector<std::unique_ptr<Program>> _graveyard;
   ConfigParser _parser;
 
-  Start _start_cmd;
-  Stop _stop_cmd;
-  Status _status_cmd;
-  Reload _reload_cmd;
-  Restart _restart_cmd;
-  Pid _pid_cmd;
-  Shutdown _shutdown_cmd;
+  std::map<std::string, std::unique_ptr<Command>> _commands;
 
   Process *findProcessByPid(pid_t pid);
   bool isExpectedExitCode(int exit_code, const std::vector<int> &exitcodes);
@@ -43,4 +37,5 @@ public:
 
   std::string executeCommand(const std::string &cmd,
                              const std::vector<std::string> &params);
+  std::string getCommands();
 };

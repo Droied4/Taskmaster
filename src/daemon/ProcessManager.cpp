@@ -21,6 +21,15 @@ ProcessManager::ProcessManager(const std::string &config_path)
       _programs[name]->start();
     }
   }
+
+  _commands["start"] = std::make_unique<Start>();
+  _commands["stop"] = std::make_unique<Stop>();
+  _commands["status"] = std::make_unique<Status>();
+  _commands["restart"] = std::make_unique<Restart>();
+  _commands["reload"] = std::make_unique<Reload>();
+  _commands["shutdown"] = std::make_unique<Shutdown>();
+  _commands["pid"] = std::make_unique<Pid>();
+  _commands["help"] = std::make_unique<Help>();
 }
 
 ProcessManager::~ProcessManager() {
@@ -60,52 +69,35 @@ Program *ProcessManager::findProgramByProcess(Process *proc) {
 std::string
 ProcessManager::executeCommand(const std::string &cmd,
                                const std::vector<std::string> &params) {
-  ASSERT(!cmd.empty(), "Command cannot be empty");
 
-  if (cmd == "reload")
-    return _reload_cmd.execute(_programs, "");
-  if (cmd == "shutdown")
-    return _shutdown_cmd.execute(_programs, "");
+  ASSERT(!cmd.empty(), "Command cannot be empty");
+  auto it = _commands.find(cmd);
+
+  if (it == _commands.end() && cmd != "_get_programs" &&
+      cmd != "_get_commands") {
+    return "Error: Unknown command '" + cmd + "'.\n";
+  }
+
   if (cmd == "_get_programs")
     return getPrograms();
+  if (cmd == "_get_commands")
+    return getCommands();
 
-  static const std::map<std::string, Command *> command_map = {
-      {"start", &_start_cmd},     {"stop", &_stop_cmd},
-      {"restart", &_restart_cmd}, {"status", &_status_cmd},
-      {"pid", &_pid_cmd},
-  };
-
-  static const std::set<std::string> not_target_commands = {"status", "pid"};
-
-  auto it = command_map.find(cmd);
-  if (it == command_map.end()) {
-    return "Error: Unknown command: " + cmd + "\n";
+  if (params.empty() && cmd != "status" && cmd != "reload" &&
+      cmd != "shutdown" && cmd != "help") {
+    return "Error: Command '" + cmd + "' requires at least one target.\n";
   }
 
+  std::string response = "";
   if (params.empty()) {
-    if (not_target_commands.count(cmd))
-      return it->second->execute(_programs, "");
-    return "Error: Command '" + cmd + "' requires a target\n";
-  }
-
-  std::string response;
-  for (const std::string &target : params)
-    response += it->second->execute(_programs, target);
-
-  return response;
-}
-
-std::string ProcessManager::getPrograms() {
-  std::string result;
-  for (const auto &[name, prog] : _programs) {
-    result += name + "\n";
-    if (prog->getConfig().numprocs > 1) {
-      result += name + ":*\n";
-      for (Process *proc : prog->getProcesses())
-        result += name + ":" + proc->getName() + "\n";
+    response += it->second->execute(_programs, "");
+  } else {
+    for (const std::string &target : params) {
+      response += it->second->execute(_programs, target);
     }
   }
-  return result;
+
+  return response;
 }
 
 void ProcessManager::reloadConfig() {
@@ -120,6 +112,8 @@ void ProcessManager::reloadConfig() {
     return;
   }
 
+  std::vector<std::string> changed_programs;
+
   for (auto it = _programs.begin(); it != _programs.end();) {
     if (new_configs.find(it->first) == new_configs.end()) {
       it->second->stop();
@@ -127,6 +121,7 @@ void ProcessManager::reloadConfig() {
       Logs::info() << it->first
                    << " removed from config, stopping and removing from active "
                       "programs\n";
+      changed_programs.push_back(it->first);
       it = _programs.erase(it);
     } else {
       ++it;
@@ -138,18 +133,24 @@ void ProcessManager::reloadConfig() {
     if (it == _programs.end()) {
       _programs[name] = std::make_unique<Program>(name, new_cfg);
       Logs::info() << name << " added to config, creating new program\n";
+      changed_programs.push_back(name);
       if (new_cfg.autostart)
         _programs[name]->start();
     } else {
       if (it->second->getConfig() != new_cfg) {
-        Logs::info() << name << " configuration changed, restarting program\n";
+        Logs::info() << name << " configuration changed\n";
         it->second->stop();
         _graveyard.push_back(std::move(it->second));
         _programs[name] = std::make_unique<Program>(name, new_cfg);
+        changed_programs.push_back(name);
         if (new_cfg.autostart)
           _programs[name]->start();
       }
     }
+  }
+
+  if (changed_programs.empty()) {
+    Logs::info() << "No configuration changes detected\n";
   }
 }
 
@@ -315,4 +316,24 @@ void ProcessManager::updateRunningStates() {
       }
     }
   }
+}
+
+std::string ProcessManager::getCommands() {
+  std::string result;
+  for (const auto &pair : _commands) {
+    if (pair.first[0] != '_') {
+      result += pair.first + "\n";
+    }
+  }
+  return result;
+}
+
+std::string ProcessManager::getPrograms() {
+  std::string result;
+  for (const auto &[name, prog] : _programs) {
+    result += name + ":*\n";
+    for (Process *proc : prog->getProcesses())
+      result += name + ":" + proc->getName() + "\n";
+  }
+  return result;
 }
