@@ -12,8 +12,6 @@ Shell::Shell(Client &client, ResponseFormatter &formatter)
       _prompt("\001\033[1;36m\002taskmaster> \001\033[0m\002") {
 
   instance = this;
-  _commands = {"start",  "stop", "restart", "status",
-               "reload", "exit", "quit",    "help"};
   rl_attempted_completion_function = Shell::taskmaster_completion;
 }
 
@@ -80,6 +78,9 @@ char **Shell::taskmaster_completion(const char *text, int start, int end) {
         first_word == "restart" || first_word == "status") {
       return rl_completion_matches(text, program_generator);
     }
+    if (first_word == "help") {
+      return rl_completion_matches(text, command_generator);
+    }
   }
   return nullptr;
 }
@@ -88,7 +89,6 @@ void Shell::fetch_programs() {
   std::string response = _client.send("_get_programs");
 
   if (response.find("Error:") == 0) {
-    // std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
     return;
   }
 
@@ -100,7 +100,24 @@ void Shell::fetch_programs() {
   }
 }
 
+void Shell::fetch_commands() {
+  std::string response = _client.send("_get_commands");
+
+  if (response.find("Error:") == 0) {
+    std::cerr << "\033[1;33mWarning: taskmasterd is not running.\033[0m\n";
+    return;
+  }
+
+  std::istringstream iss(response);
+  std::string prog;
+  _commands.clear();
+  while (iss >> prog) {
+    _commands.push_back(prog);
+  }
+}
+
 void Shell::run() {
+  fetch_commands();
   fetch_programs();
   _formatter.print_header();
 
@@ -119,10 +136,6 @@ void Shell::run() {
     if (input == "exit" || input == "quit") {
       free(line);
       break;
-    } else if (input == "help") {
-      _formatter.print_help();
-      free(line);
-      continue;
     } else if (input == "clear") {
       std::cout << "\033[2J\033[H";
       free(line);

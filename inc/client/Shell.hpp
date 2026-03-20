@@ -20,6 +20,7 @@ private:
   static char **taskmaster_completion(const char *text, int start, int end);
 
   void fetch_programs();
+  void fetch_commands();
 
 public:
   Shell(Client &client, ResponseFormatter &formatter);
