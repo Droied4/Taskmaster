@@ -242,16 +242,24 @@ Restart::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
                  const std::string &target) {
   ASSERT(!target.empty(), "Restart command requires a target");
 
-  std::string error;
+  if (target == "all") {
+    std::string result = "";
+    for (auto &[name, prog] : programs) {
+      prog->restart();
+      result += name + ": restarted\n";
+    }
+    return result;
+  }
 
   Program *prog = nullptr;
+  std::string error;
   auto procs = resolveTarget(programs, target, &prog, error);
+
   if (!error.empty())
     return error;
 
   prog->restartProcesses(procs);
-
-  return target + ": restarting\n";
+  return target + ": restarted\n";
 }
 
 Reload::Reload() : Command("reload") {}
