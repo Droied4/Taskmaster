@@ -13,8 +13,7 @@ Daemon::Daemon(ProcessManager &obj)
       _manager(obj) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
-  // if (daemon(1, 0) == -1)
-  //   ERROR("daemon failed");
+  _daemon = true;
 }
 
 Daemon::~Daemon() {}
@@ -43,8 +42,18 @@ void Daemon::setupSignals() {
   epoll_ctl(_epfd, EPOLL_CTL_ADD, _sig_fd, &ev);
 }
 
+void Daemon::setDaemon(bool value)
+{
+	this->_daemon = value;
+}
+
 void Daemon::run() {
   ASSERT(EVENTS_SIZE > 0, "EVENTS_SIZE must be above 0");
+  if (_daemon)
+  {
+	  if (daemon(1, 0) == -1)
+		  ERROR("daemon failed");
+  }
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
   _serv.bindListen();

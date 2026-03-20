@@ -8,6 +8,7 @@ class Daemon {
 private:
   int _epfd;
   int _sig_fd;
+  bool _daemon;
   Server _serv;
   ProcessManager &_manager;
   CommandParser _cparser;
@@ -21,6 +22,7 @@ public:
   ~Daemon();
 
   static constexpr int EVENTS_SIZE = 64;
+  void setDaemon(bool value);
 
   void run();
 };

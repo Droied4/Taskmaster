@@ -15,16 +15,6 @@ static void help(void)
 \n";
 }
 
-static void version(void)
-{
-	std::cout << "Taskmasterd v0.1\n";
-}
-
-static void logFile(std::string optarg)
-{
-	Logs::setFile(optarg);
-}
-
 static void logLevel(std::string optarg)
 {
 	if (optarg == "debug")
@@ -47,7 +37,7 @@ static void logLevel(std::string optarg)
 		
 }
 
-static void flagCases(int ac, char *av[])
+static void flagCases(int ac, char *av[], Daemon daemon)
 {
 	std::vector<std::string> configs;
 
@@ -72,13 +62,16 @@ static void flagCases(int ac, char *av[])
 				help();
 				exit(1);
 			case 'v':
-				version();
+				std::cout << "Taskmasterd v0.1\n";
 				exit(1);
 			case 'l':
-				logFile(optarg);
+				Logs::setFile(optarg);
 				break ;
 			case 'e':
 				logLevel(optarg);
+				break ;
+			case 'n':
+				daemon.setDaemon(false);
 				break ;
 		}
 	}
@@ -86,14 +79,12 @@ static void flagCases(int ac, char *av[])
 
 int main(int ac, char *av[]) {
 	
-  flagCases(ac, av);
   std::string config_path = "config.lua";
-
   ProcessManager manager(config_path);
-
   Daemon daemon(manager);
+  
+  flagCases(ac, av, daemon);
 
-  daemon.run();
-
+  daemon.run(); 
   return 0;
 }
