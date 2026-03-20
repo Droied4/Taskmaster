@@ -1,14 +1,11 @@
 #pragma once
 
 #include "CommandParser.hpp"
-#include "Logs.hpp"
 #include "ProcessManager.hpp"
 #include "Server.hpp"
 
 struct Config {
   std::string config_path = "config.lua";
-  std::string logfile;
-  Logs::Level loglevel = Logs::Level::INFO;
   bool daemonize = true;
 };
 

@@ -60,10 +60,10 @@ static struct Config flagCases(int ac, char *av[]) {
       std::cout << "Taskmasterd v0.1\n";
       exit(1);
     case 'l':
-      conf.logfile = optarg;
+      Logs::setFile(optarg);
       break;
     case 'e':
-      conf.loglevel = logLevel(optarg);
+      Logs::setMinLevel(logLevel(optarg));
       break;
     case 'n':
       conf.daemonize = false;
