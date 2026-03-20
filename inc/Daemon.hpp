@@ -3,6 +3,14 @@
 #include "CommandParser.hpp"
 #include "ProcessManager.hpp"
 #include "Server.hpp"
+#include "Logs.hpp"
+
+struct Config {
+    std::string config_path = "config.lua";
+    std::string logfile;
+    Logs::Level loglevel = Logs::Level::INFO;
+    bool daemonize = true;
+};
 
 class Daemon {
 private:
@@ -26,3 +34,4 @@ public:
 
   void run();
 };
+

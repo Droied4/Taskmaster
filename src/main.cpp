@@ -15,16 +15,16 @@ static void help(void)
 \n";
 }
 
-static void logLevel(std::string optarg)
+static Logs::Level logLevel(std::string optarg)
 {
 	if (optarg == "debug")
-  		Logs::setMinLevel(Logs::Level::LDEBUG);
+		return Logs::Level::LDEBUG;
 	else if (optarg == "info")
-  		Logs::setMinLevel(Logs::Level::INFO);
+		return Logs::Level::INFO;
 	else if (optarg == "warning")
-  		Logs::setMinLevel(Logs::Level::WARNING);
+		return Logs::Level::WARNING;
 	else if (optarg == "error")
-  		Logs::setMinLevel(Logs::Level::ERROR);
+		return Logs::Level::ERROR;
 	else
 	{
 		std::cout << "Choose a valid level:\n\
@@ -37,9 +37,9 @@ static void logLevel(std::string optarg)
 		
 }
 
-static void flagCases(int ac, char *av[], Daemon *daemon)
+static struct Config flagCases(int ac, char *av[])
 {
-	std::vector<std::string> configs;
+	struct Config conf;
 
 	const char* short_opts = ":?hnvc:l:e:";
 
@@ -65,25 +65,30 @@ static void flagCases(int ac, char *av[], Daemon *daemon)
 				std::cout << "Taskmasterd v0.1\n";
 				exit(1);
 			case 'l':
-				Logs::setFile(optarg);
+				conf.logfile = optarg;
 				break ;
 			case 'e':
-				logLevel(optarg);
+				conf.loglevel = logLevel(optarg);
 				break ;
 			case 'n':
-				daemon->setDaemon(false);
+				conf.daemonize = false;
+				break ;
+			case 'c'
+				conf.config_path = optarg;
 				break ;
 		}
 	}
 }
 
 int main(int ac, char *av[]) {
-	
-  std::string config_path = "config.lua";
-  ProcessManager manager(config_path);
+
+  struct Config conf;
+  conf = flagCases(ac, av);
+  Logs::setFile(conf.logfile);
+  Logs::setMinLevel(conf.loglevel);
+
+  ProcessManager manager(conf.config_path);
   Daemon daemon(manager);
-  
-  flagCases(ac, av, &daemon);
 
   daemon.run(); 
   return 0;
