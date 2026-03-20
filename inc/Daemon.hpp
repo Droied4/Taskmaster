@@ -1,15 +1,15 @@
 #pragma once
 
 #include "CommandParser.hpp"
+#include "Logs.hpp"
 #include "ProcessManager.hpp"
 #include "Server.hpp"
-#include "Logs.hpp"
 
 struct Config {
-    std::string config_path = "config.lua";
-    std::string logfile;
-    Logs::Level loglevel = Logs::Level::INFO;
-    bool daemonize = true;
+  std::string config_path = "config.lua";
+  std::string logfile;
+  Logs::Level loglevel = Logs::Level::INFO;
+  bool daemonize = true;
 };
 
 class Daemon {
@@ -18,13 +18,13 @@ private:
   int _sig_fd;
   bool _daemon;
   Server _serv;
-  ProcessManager &_manager;
+  ProcessManager _manager;
   CommandParser _cparser;
 
   void setupSignals();
 
 public:
-  Daemon(ProcessManager &obj);
+  Daemon(struct Config conf);
   Daemon(const Daemon &obj) = delete;
   Daemon &operator=(const Daemon &obj) = delete;
   ~Daemon();
@@ -34,4 +34,3 @@ public:
 
   void run();
 };
-

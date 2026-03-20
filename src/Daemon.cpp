@@ -8,12 +8,13 @@
 #include <sys/signalfd.h>
 #include <unistd.h>
 
-Daemon::Daemon(ProcessManager &obj)
-    : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _serv(_epfd),
-      _manager(obj) {
+Daemon::Daemon(struct Config conf)
+    : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _daemon(conf.daemonize),
+      _serv(_epfd), _manager(conf.config_path) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
-  _daemon = true;
+  Logs::setFile(conf.logfile);
+  Logs::setMinLevel(conf.loglevel);
 }
 
 Daemon::~Daemon() {}
@@ -42,17 +43,13 @@ void Daemon::setupSignals() {
   epoll_ctl(_epfd, EPOLL_CTL_ADD, _sig_fd, &ev);
 }
 
-void Daemon::setDaemon(bool value)
-{
-	this->_daemon = value;
-}
+void Daemon::setDaemon(bool value) { this->_daemon = value; }
 
 void Daemon::run() {
   ASSERT(EVENTS_SIZE > 0, "EVENTS_SIZE must be above 0");
-  if (_daemon)
-  {
-	  if (daemon(1, 0) == -1)
-		  ERROR("daemon failed");
+  if (_daemon) {
+    if (daemon(1, 0) == -1)
+      ERROR("daemon failed");
   }
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
