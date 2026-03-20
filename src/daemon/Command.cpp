@@ -309,15 +309,27 @@ Help::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
            "start <gname:*>       Start all processes in a group\n"
            "start <name> <name>   Start multiple processes\n"
            "start all             Start all processes\n";
+  } else if (target == "stop") {
+    return "stop <name>          Stop a process\n"
+           "stop <gname:*>       Stop all processes in a group\n"
+           "stop <name> <name>   Stop multiple processes\n"
+           "stop all             Stop all processes\n";
+  } else if (target == "restart") {
+    return "restart <name>          Restart a process\n"
+           "restart <gname:*>       Restart all processes in a group\n"
+           "restart <name> <name>   Restart multiple processes\n"
+           "restart all             Restart all processes\n";
+  } else if (target == "status") {
+    return "status <name>          Get status of a process\n"
+           "status <gname:*>       Get status of all processes in a group\n"
+           "status <name> <name>   Get status of multiple processes\n"
+           "status all             Get all processes status info\n";
+  } else if (target == "reload") {
+    return "reload                 Reload the configuration file\n";
+  } else if (target == "pid") {
+    return "pid                    Show the PID of the taskmasterd daemon\n";
+  } else if (target == "shutdown") {
+    return "shutdown               Shutdown the taskmasterd daemon\n";
   }
   return "No help available for '" + target + "'\n";
 }
-
-// "  start <target>   - Start a program or process\n"
-// "  stop <target>    - Stop a program or process\n"
-// "  restart <target> - Restart a program or process\n"
-// "  status [target]  - Show status of all or specific program/process\n"
-// "  reload           - Reload the configuration file\n"
-// "  pid              - Show the PID of the taskmasterd daemon\n"
-// "  shutdown         - Shutdown the taskmasterd daemon\n"
-// "  help             - Show this help message\n";
