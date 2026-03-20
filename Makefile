@@ -6,7 +6,7 @@ NAME_CLIENT = taskmasterctl
 
 OS = $(shell uname)
 CC = c++
-CFLAGS = -Wall -Wextra -Werror -std=c++23 -I $(INCLUDE_PATH) -MMD -MP
+CFLAGS = -Wall -Wextra -Werror -std=c++23 -MMD -MP
 
 CFLAGS += -fsanitize=address,leak,undefined -g
 
@@ -21,27 +21,32 @@ SOURCES_PATH    = ./src
 INCLUDE_PATH    = ./inc
 OBJECTS_PATH    = ./obj
 
-HEADER = $(INCLUDE_PATH)/Server.hpp $(INCLUDE_PATH)/taskmaster.hpp \
-		 $(INCLUDE_PATH)/ConfigParser.hpp $(INCLUDE_PATH)/common.hpp \
-		 $(INCLUDE_PATH)/Program.hpp $(INCLUDE_PATH)/Process.hpp \
-		 $(INCLUDE_PATH)/Logs.hpp $(INCLUDE_PATH)/Daemon.hpp \
-		 $(INCLUDE_PATH)/Command.hpp $(INCLUDE_PATH)/CommandParser.hpp \
-		 $(INCLUDE_PATH)/ProcessManager.hpp 
+DAEMON_SRC_PATH = $(SOURCES_PATH)/daemon
+DAEMON_INC_PATH = $(INCLUDE_PATH)/daemon
 
-SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Logs.cpp Daemon.cpp Command.cpp CommandParser.cpp ProcessManager.cpp
+COMMON_INC_PATH = $(INCLUDE_PATH)
+
+CLIENT_SRC_PATH = $(SOURCES_PATH)/client
+CLIENT_INC_PATH = $(INCLUDE_PATH)/client
+
+DAEMON_SOURCES = main.cpp Server.cpp ConfigParser.cpp Program.cpp Process.cpp Daemon.cpp Command.cpp CommandParser.cpp ProcessManager.cpp
+
+CLIENT_SOURCES = Cli.cpp ResponseFormatter.cpp Shell.cpp Client.cpp
+
+COMMON_SOURCES = Logs.cpp
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               OBJECTS                                        #
 # ╚══════════════════════════════════════════════════════════════════════════╝ #  
 
-OBJECTS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.o})
+DAEMON_OBJECTS = $(addprefix $(OBJECTS_PATH)/daemon/, ${DAEMON_SOURCES:.cpp=.o})
+CLIENT_OBJECTS = $(addprefix $(OBJECTS_PATH)/client/, ${CLIENT_SOURCES:.cpp=.o})
+COMMON_OBJECTS = $(addprefix $(OBJECTS_PATH)/, ${COMMON_SOURCES:.cpp=.o})
 
-CLIENT_SOURCES = Cli.cpp ResponseFormatter.cpp Shell.cpp Client.cpp
-OBJ_CLIENT = $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.o})
-
-DEPS = $(addprefix $(OBJECTS_PATH)/, ${SOURCES:.cpp=.d}) \
-	   $(addprefix $(OBJECTS_PATH)/, ${CLIENT_SOURCES:.cpp=.d})
+DEPS = $(addprefix $(OBJECTS_PATH)/daemon/, ${DAEMON_SOURCES:.cpp=.d}) \
+	   $(addprefix $(OBJECTS_PATH)/client/, ${CLIENT_SOURCES:.cpp=.d}) \
+	   $(addprefix $(OBJECTS_PATH)/, ${COMMON_SOURCES:.cpp=.d})
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  
 #                               COLORS                                         #
@@ -66,18 +71,28 @@ server: header $(NAME)
 
 -include $(DEPS)
 
-$(NAME): $(OBJECTS)
+$(NAME): $(DAEMON_OBJECTS) $(COMMON_OBJECTS)
 	@printf "$(CYAN)$@ Compiled$(NC)\n"
 	@$(CC) $(CFLAGS) $^ -o $(NAME) $(LDFLAGS)
 
-$(NAME_CLIENT): $(OBJ_CLIENT)
+$(NAME_CLIENT): $(CLIENT_OBJECTS)
 	@printf "$(CYAN)Linking $@$(NC)\n"
 	@$(CC) $(CFLAGS) $^ -o $(NAME_CLIENT) -lreadline
+
+$(OBJECTS_PATH)/daemon/%.o: $(DAEMON_SRC_PATH)/%.cpp Makefile
+	@printf "$(CYAN)Compiling $@$(NC)\n";
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -I $(DAEMON_INC_PATH) -I $(COMMON_INC_PATH) $(LUA_INC) -c $< -o $@ 
+
+$(OBJECTS_PATH)/client/%.o: $(CLIENT_SRC_PATH)/%.cpp Makefile
+	@printf "$(CYAN)Compiling $@$(NC)\n";
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -I $(CLIENT_INC_PATH) -c $< -o $@ 
 
 $(OBJECTS_PATH)/%.o: $(SOURCES_PATH)/%.cpp Makefile
 	@printf "$(CYAN)Compiling $@$(NC)\n";
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(LUA_INC) -c $< -o $@ 
+	@$(CC) $(CFLAGS) -I $(COMMON_INC_PATH) -c $< -o $@ 
 
 fast: 
 	make -j$(nproc)
