@@ -146,7 +146,8 @@ void ProcessManager::reloadConfig() {
         it->second->stop();
         _graveyard.push_back(std::move(it->second));
         _programs[name] = std::make_unique<Program>(name, new_cfg);
-        _programs[name]->start();
+        if (new_cfg.autostart)
+          _programs[name]->start();
       }
     }
   }
