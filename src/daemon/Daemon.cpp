@@ -11,7 +11,7 @@
 
 Daemon::Daemon(struct Config conf)
     : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _daemon(conf.daemonize),
-      _serv(_epfd), _manager(conf.config_path) {
+      _is_shutting_down(false), _serv(_epfd), _manager(conf.config_path) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
 }
@@ -44,7 +44,7 @@ void Daemon::setupSignals() {
 
 void Daemon::handlePTYInput(int client_fd) {
   char buf[1024];
-  int bytes = read(client_fd, buf, sizeof(buf));
+  int bytes = read(client_fd, buf, sizeof(buf) - 1);
   int pty_fd = _client_to_pty[client_fd];
 
   if (bytes <= 0) {
@@ -54,10 +54,16 @@ void Daemon::handlePTYInput(int client_fd) {
     _pty_to_client.erase(pty_fd);
     close(client_fd);
   } else {
-    write(pty_fd, buf, bytes);
+    buf[bytes] = '\0';
+    std::string data(buf, bytes);
+
+    handlePTYResize(pty_fd, data);
+
+    if (!data.empty()) {
+      write(pty_fd, data.c_str(), data.length());
+    }
   }
 }
-
 void Daemon::handlePTYOutput(int pty_fd) {
   char buf[1024];
   int bytes = read(pty_fd, buf, sizeof(buf));
@@ -75,7 +81,7 @@ void Daemon::handlePTYOutput(int pty_fd) {
   }
 }
 
-int Daemon::handleSignal() {
+void Daemon::handleSignal() {
   struct signalfd_siginfo fdsi;
 
   ssize_t s = read(_sig_fd, &fdsi, sizeof(struct signalfd_siginfo));
@@ -88,14 +94,49 @@ int Daemon::handleSignal() {
     } else if (fdsi.ssi_signo == SIGINT || fdsi.ssi_signo == SIGTERM) {
       Logs::info() << "[Daemon] Received signal to terminate, shutting down..."
                    << std::endl;
+      _is_shutting_down = true;
       _manager.shutdownAll();
-      return -1;
     }
   }
-  return 0;
+}
+
+void Daemon::handlePTYResize(int pty_fd, std::string &data) {
+  size_t pos = data.find("\x1E"
+                         "WINCH:");
+
+  while (pos != std::string::npos) {
+    size_t end = data.find("\x1E", pos + 1);
+    if (end != std::string::npos) {
+      std::string winch_cmd = data.substr(pos + 7, end - pos - 7);
+      size_t sep = winch_cmd.find(';');
+
+      if (sep != std::string::npos) {
+        struct winsize ws;
+        ws.ws_row = std::stoi(winch_cmd.substr(0, sep));
+        ws.ws_col = std::stoi(winch_cmd.substr(sep + 1));
+        ws.ws_xpixel = 0;
+        ws.ws_ypixel = 0;
+
+        ioctl(pty_fd, TIOCSWINSZ, &ws);
+      }
+      data.erase(pos, end - pos + 1);
+    } else {
+      break;
+    }
+    pos = data.find("\x1E"
+                    "WINCH:");
+  }
 }
 
 void Daemon::processClientCommand(int client_fd, const std::string &input) {
+
+  if (_is_shutting_down) {
+    _serv.sendData(
+        client_fd,
+        "Error: Daemon is shutting down. No new commands accepted.\n");
+    return;
+  }
+
   _cparser.setCommandParser(input);
   std::string cmd = _cparser.getCommand();
   std::vector<std::string> targets = _cparser.getParams();
@@ -149,8 +190,7 @@ void Daemon::run() {
       if (current_fd == _serv.getServerFd()) {
         _serv.acceptConnection(_epfd);
       } else if (current_fd == _sig_fd) {
-        if (handleSignal() < 0)
-          return;
+        handleSignal();
       } else if (_client_to_pty.find(current_fd) != _client_to_pty.end()) {
         handlePTYInput(current_fd);
       } else if (_pty_to_client.find(current_fd) != _pty_to_client.end()) {
@@ -164,5 +204,9 @@ void Daemon::run() {
     }
     _manager.reap();
     _manager.updateRunningStates();
+    if (_is_shutting_down && !_manager.hasActiveProcesses()) {
+      Logs::info() << "[Daemon] All processes terminated. Exiting cleanly.\n";
+      break;
+    }
   }
 }
