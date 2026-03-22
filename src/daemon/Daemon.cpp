@@ -42,6 +42,92 @@ void Daemon::setupSignals() {
   epoll_ctl(_epfd, EPOLL_CTL_ADD, _sig_fd, &ev);
 }
 
+void Daemon::handlePTYInput(int client_fd) {
+  char buf[1024];
+  int bytes = read(client_fd, buf, sizeof(buf));
+  int pty_fd = _client_to_pty[client_fd];
+
+  if (bytes <= 0) {
+    Logs::info() << "[Daemon] Client detached from PTY\n";
+    epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
+    _client_to_pty.erase(client_fd);
+    _pty_to_client.erase(pty_fd);
+    close(client_fd);
+  } else {
+    write(pty_fd, buf, bytes);
+  }
+}
+
+void Daemon::handlePTYOutput(int pty_fd) {
+  char buf[1024];
+  int bytes = read(pty_fd, buf, sizeof(buf));
+  int client_fd = _pty_to_client[pty_fd];
+
+  if (bytes <= 0) {
+    Logs::info() << "[Daemon] Process PTY closed during attach\n";
+    _serv.sendData(client_fd, "\r\n[Process Terminated]\r\n");
+    epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
+    _pty_to_client.erase(pty_fd);
+    _client_to_pty.erase(client_fd);
+    close(client_fd);
+  } else {
+    write(client_fd, buf, bytes);
+  }
+}
+
+int Daemon::handleSignal() {
+  struct signalfd_siginfo fdsi;
+
+  ssize_t s = read(_sig_fd, &fdsi, sizeof(struct signalfd_siginfo));
+
+  if (s == sizeof(struct signalfd_siginfo)) {
+    if (fdsi.ssi_signo == SIGHUP) {
+      Logs::info() << "[Daemon] Received SIGHUP, reloading configuration..."
+                   << std::endl;
+      _manager.reloadConfig();
+    } else if (fdsi.ssi_signo == SIGINT || fdsi.ssi_signo == SIGTERM) {
+      Logs::info() << "[Daemon] Received signal to terminate, shutting down..."
+                   << std::endl;
+      _manager.shutdownAll();
+      return -1;
+    }
+  }
+  return 0;
+}
+
+void Daemon::processClientCommand(int client_fd, const std::string &input) {
+  _cparser.setCommandParser(input);
+  std::string cmd = _cparser.getCommand();
+  std::vector<std::string> targets = _cparser.getParams();
+
+  if (cmd.empty())
+    return;
+
+  std::string output = _manager.executeCommand(cmd, targets);
+
+  if (output.find("INTERNAL_ATTACH:") == 0) {
+    std::string pty_info = output.substr(16);
+    size_t separator = pty_info.find(':');
+
+    int pty_fd = std::stoi(pty_info.substr(0, separator));
+    std::string proc_name = pty_info.substr(separator + 1);
+
+    _client_to_pty[client_fd] = pty_fd;
+    _pty_to_client[pty_fd] = client_fd;
+
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLRDHUP;
+    ev.data.fd = pty_fd;
+    epoll_ctl(_epfd, EPOLL_CTL_ADD, pty_fd, &ev);
+
+    Logs::info() << "[Daemon] Client attached to PTY for process: " << proc_name
+                 << "\n";
+
+    _serv.sendData(client_fd, "ATTACH_OK\n", false);
+  } else {
+    _serv.sendData(client_fd, output);
+  }
+}
 void Daemon::setDaemon(bool value) { this->_daemon = value; }
 
 void Daemon::run() {
@@ -59,92 +145,20 @@ void Daemon::run() {
     int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 100);
     for (int i = 0; i < nfds; ++i) {
       int current_fd = events[i].data.fd;
-      if (current_fd == _serv.getServerFd())
+
+      if (current_fd == _serv.getServerFd()) {
         _serv.acceptConnection(_epfd);
-      else if (current_fd == _sig_fd) { // llega una nueva signal
-        struct signalfd_siginfo fdsi;
-
-        ssize_t s = read(_sig_fd, &fdsi, sizeof(struct signalfd_siginfo));
-
-        if (s == sizeof(struct signalfd_siginfo)) {
-          if (fdsi.ssi_signo == SIGHUP) {
-            Logs::info()
-                << "[Daemon] Received SIGHUP, reloading configuration..."
-                << std::endl;
-            _manager.reloadConfig();
-          } else if (fdsi.ssi_signo == SIGINT || fdsi.ssi_signo == SIGTERM) {
-            Logs::info()
-                << "[Daemon] Received signal to terminate, shutting down..."
-                << std::endl;
-            _manager.shutdownAll();
-            return;
-          }
-        }
+      } else if (current_fd == _sig_fd) {
+        if (handleSignal() < 0)
+          return;
       } else if (_client_to_pty.find(current_fd) != _client_to_pty.end()) {
-        char buf[1024];
-        int bytes = read(current_fd, buf, sizeof(buf));
-        int pty_fd = _client_to_pty[current_fd];
-
-        if (bytes <= 0) {
-          Logs::info() << "[Daemon] Client detached from PTY\n";
-          epoll_ctl(_epfd, EPOLL_CTL_DEL, current_fd, nullptr);
-          _client_to_pty.erase(current_fd);
-          _pty_to_client.erase(pty_fd);
-          close(current_fd);
-        } else {
-          write(pty_fd, buf, bytes);
-        }
+        handlePTYInput(current_fd);
       } else if (_pty_to_client.find(current_fd) != _pty_to_client.end()) {
-        char buf[1024];
-        int bytes = read(current_fd, buf, sizeof(buf));
-        int client_fd = _pty_to_client[current_fd];
-
-        if (bytes <= 0) {
-          Logs::info() << "[Daemon] Process PTY closed during attach\n";
-          _serv.sendData(client_fd, "\n[Process Terminated]\n");
-          epoll_ctl(_epfd, EPOLL_CTL_DEL, current_fd, nullptr);
-          _pty_to_client.erase(current_fd);
-          _client_to_pty.erase(client_fd);
-          close(client_fd);
-        } else {
-          write(client_fd, buf, bytes);
-        }
+        handlePTYOutput(current_fd);
       } else {
         std::string input = _serv.readData(current_fd, this->_epfd);
-        std::string output;
         if (!input.empty()) {
-          _cparser.setCommandParser(input);
-          std::string cmd = _cparser.getCommand();
-          std::vector<std::string> targets = _cparser.getParams();
-          if (cmd == "fg") {
-            if (targets.empty()) {
-              _serv.sendData(current_fd,
-                             "Error: fg requires a target process.\n");
-            } else {
-              Process *proc = _manager.getExactProcess(targets[0]);
-              if (proc && proc->getPtyMaster() >= 0 &&
-                  proc->getState() == ProcessState::RUNNING) {
-                int pty_fd = proc->getPtyMaster();
-
-                _client_to_pty[current_fd] = pty_fd;
-                _pty_to_client[pty_fd] = current_fd;
-
-                struct epoll_event ev;
-                ev.events = EPOLLIN | EPOLLRDHUP;
-                ev.data.fd = pty_fd;
-                epoll_ctl(_epfd, EPOLL_CTL_ADD, pty_fd, &ev);
-                _serv.sendData(current_fd, "ATTACH_OK\n", false);
-                Logs::info() << "[Daemon] Client attached to PTY\n";
-              } else {
-                _serv.sendData(
-                    current_fd,
-                    "Error: Process not found, not running, or has no PTY\n");
-              }
-            }
-          } else if (!cmd.empty()) {
-            output = _manager.executeCommand((cmd), targets);
-            _serv.sendData(current_fd, output);
-          }
+          processClientCommand(current_fd, input);
         }
       }
     }

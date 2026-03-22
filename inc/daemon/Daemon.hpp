@@ -22,6 +22,10 @@ private:
   std::map<int, int> _pty_to_client;
 
   void setupSignals();
+  void handlePTYInput(int client_fd);
+  void handlePTYOutput(int pty_fd);
+  int handleSignal();
+  void processClientCommand(int client_fd, const std::string &input);
 
 public:
   Daemon(struct Config conf);
