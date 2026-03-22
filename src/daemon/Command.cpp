@@ -93,7 +93,6 @@ static std::string formatDisplayName(Process *proc, Program *prog) {
 
 static std::string formatStateInfo(Process *proc) {
   ProcessState state = proc->getState();
-
   switch (state) {
   case ProcessState::RUNNING:
   case ProcessState::STARTING:
@@ -147,35 +146,39 @@ static std::string formatStatusLine(Process *proc, Program *prog,
 }
 
 Command::Command(std::string name) : _name(name) {}
-
 Command::~Command() {}
 
 Start::Start() : Command("start") {}
 
 std::string
 Start::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-               const std::string &target) {
-  ASSERT(!target.empty(), "Start command requires a target");
-
-  std::string error;
-
-  Program *prog = nullptr;
-  auto procs = resolveTarget(programs, target, &prog, error);
-  if (!error.empty())
-    return error;
+               const std::vector<std::string> &targets) {
+  if (targets.empty())
+    return "Error: start command requires a target process or group.\n";
 
   std::string report = "";
-  for (Process *proc : procs) {
-    ASSERT(proc != nullptr, "Process pointer cannot be null");
-    ProcessState s = proc->getState();
+  for (const std::string &target : targets) {
+    std::string error;
+    Program *prog = nullptr;
+    auto procs = resolveTarget(programs, target, &prog, error);
 
-    if (s == ProcessState::STOPPED || s == ProcessState::EXITED ||
-        s == ProcessState::FATAL) {
-      proc->spawn();
-      report += proc->getName() + ": started\n";
-    } else {
-      report += proc->getName() +
-                ": already active (State: " + stateToString(s) + ")\n";
+    if (!error.empty()) {
+      report += error;
+      continue;
+    }
+
+    for (Process *proc : procs) {
+      ASSERT(proc != nullptr, "Process pointer cannot be null");
+      ProcessState s = proc->getState();
+
+      if (s == ProcessState::STOPPED || s == ProcessState::EXITED ||
+          s == ProcessState::FATAL) {
+        proc->spawn();
+        report += proc->getName() + ": started\n";
+      } else {
+        report += proc->getName() +
+                  ": already active (State: " + stateToString(s) + ")\n";
+      }
     }
   }
   return report;
@@ -185,20 +188,26 @@ Stop::Stop() : Command("stop") {}
 
 std::string
 Stop::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-              const std::string &target) {
-  ASSERT(!target.empty(), "Stop command requires a target");
-  std::string error;
-
-  Program *prog = nullptr;
-  auto procs = resolveTarget(programs, target, &prog, error);
-  if (!error.empty())
-    return error;
+              const std::vector<std::string> &targets) {
+  if (targets.empty())
+    return "Error: stop command requires a target process or group.\n";
 
   std::string report = "";
-  for (Process *proc : procs) {
-    ASSERT(proc != nullptr, "Program pointer cannot be null");
-    proc->killProcess();
-    report += proc->getName() + ": stopped\n";
+  for (const std::string &target : targets) {
+    std::string error;
+    Program *prog = nullptr;
+    auto procs = resolveTarget(programs, target, &prog, error);
+
+    if (!error.empty()) {
+      report += error;
+      continue;
+    }
+
+    for (Process *proc : procs) {
+      ASSERT(proc != nullptr, "Program pointer cannot be null");
+      proc->killProcess();
+      report += proc->getName() + ": stopped\n";
+    }
   }
   return report;
 }
@@ -207,7 +216,7 @@ Status::Status() : Command("status") {}
 
 std::string
 Status::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                const std::string &target) {
+                const std::vector<std::string> &targets) {
   if (programs.empty()) {
     return "No programs configured\n";
   }
@@ -215,22 +224,30 @@ Status::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
   std::string result = "";
   size_t name_width = getMaxNameLength(programs);
 
-  if (target == "all" || target.empty()) {
-    for (const auto &[prog_name, prog] : programs) {
-      for (Process *proc : prog->getProcesses()) {
-        result += formatStatusLine(proc, prog.get(), name_width);
-      }
-    }
-    return result;
-  }
+  std::vector<std::string> active_targets =
+      targets.empty() ? std::vector<std::string>{"all"} : targets;
 
-  std::string error;
-  Program *prog = nullptr;
-  auto procs = resolveTarget(programs, target, &prog, error);
-  if (!error.empty())
-    return error;
-  for (Process *proc : procs) {
-    result += formatStatusLine(proc, prog, name_width);
+  for (const std::string &target : active_targets) {
+    if (target == "all") {
+      for (const auto &[prog_name, prog] : programs) {
+        for (Process *proc : prog->getProcesses()) {
+          result += formatStatusLine(proc, prog.get(), name_width);
+        }
+      }
+      continue;
+    }
+
+    std::string error;
+    Program *prog = nullptr;
+    auto procs = resolveTarget(programs, target, &prog, error);
+    if (!error.empty()) {
+      result += error;
+      continue;
+    }
+
+    for (Process *proc : procs) {
+      result += formatStatusLine(proc, prog, name_width);
+    }
   }
   return result;
 }
@@ -239,36 +256,44 @@ Restart::Restart() : Command("restart") {}
 
 std::string
 Restart::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                 const std::string &target) {
-  ASSERT(!target.empty(), "Restart command requires a target");
+                 const std::vector<std::string> &targets) {
+  if (targets.empty())
+    return "Error: restart command requires a target process or group.\n";
 
-  if (target == "all") {
-    std::string result = "";
-    for (auto &[name, prog] : programs) {
-      prog->restart();
-      result += name + ": restarted\n";
+  std::string report = "";
+  for (const std::string &target : targets) {
+    if (target == "all") {
+      for (auto &[name, prog] : programs) {
+        prog->restart();
+        report += name + ": restarted\n";
+      }
+      continue;
     }
-    return result;
+
+    Program *prog = nullptr;
+    std::string error;
+    auto procs = resolveTarget(programs, target, &prog, error);
+
+    if (!error.empty()) {
+      report += error;
+      continue;
+    }
+
+    prog->restartProcesses(procs);
+    report += target + ": restarted\n";
   }
-
-  Program *prog = nullptr;
-  std::string error;
-  auto procs = resolveTarget(programs, target, &prog, error);
-
-  if (!error.empty())
-    return error;
-
-  prog->restartProcesses(procs);
-  return target + ": restarted\n";
+  return report;
 }
 
 Reload::Reload() : Command("reload") {}
 
 std::string
 Reload::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                const std::string &target) {
+                const std::vector<std::string> &targets) {
   (void)programs;
-  (void)target;
+
+  if (!targets.empty())
+    return "Error: reload command does not take any parameters.\n";
 
   kill(getpid(), SIGHUP);
   return "taskmasterd: reloading configuration...\n";
@@ -278,22 +303,23 @@ Pid::Pid() : Command("pid") {}
 
 std::string
 Pid::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-             const std::string &target) {
-
+             const std::vector<std::string> &targets) {
   (void)programs;
-  (void)target;
-  std::string pid;
-  pid = std::to_string(getpid()) + "\n";
-  return (pid);
+  if (!targets.empty())
+    return "Error: pid command does not take any parameters.\n";
+
+  return std::to_string(getpid()) + "\n";
 }
 
 Shutdown::Shutdown() : Command("shutdown") {}
 
 std::string
 Shutdown::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-                  const std::string &target) {
+                  const std::vector<std::string> &targets) {
   (void)programs;
-  (void)target;
+
+  if (!targets.empty())
+    return "Error: shutdown command does not take any parameters.\n";
 
   kill(getpid(), SIGTERM);
   return "taskmasterd: shutting down...\n";
@@ -303,20 +329,22 @@ Help::Help() : Command("help") {}
 
 std::string
 Help::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
-              const std::string &target) {
+              const std::vector<std::string> &targets) {
   (void)programs;
 
-  if (target.empty()) {
+  if (targets.empty()) {
     return "default commands (type help <topic>):\n"
            "=====================================\n"
-           "start stop restart status reload pid shutdown help \n";
+           "start stop restart status reload pid shutdown help fg\n";
   }
 
+  std::string target = targets[0];
+
   if (target == "start") {
-    return "start <name>          Start a process\n"
-           "start <gname:*>       Start all processes in a group\n"
-           "start <name> <name>   Start multiple processes\n"
-           "start all             Start all processes\n";
+    return "start <name>         Start a process\n"
+           "start <gname:*>      Start all processes in a group\n"
+           "start <name> <name>  Start multiple processes\n"
+           "start all            Start all processes\n";
   } else if (target == "stop") {
     return "stop <name>          Stop a process\n"
            "stop <gname:*>       Stop all processes in a group\n"
@@ -338,6 +366,64 @@ Help::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
     return "pid                    Show the PID of the taskmasterd daemon\n";
   } else if (target == "shutdown") {
     return "shutdown               Shutdown the taskmasterd daemon\n";
+  } else if (target == "fg") {
+    return "fg <gname:name>        Bring a process to the foreground\n";
   }
   return "No help available for '" + target + "'\n";
+}
+
+GetPrograms::GetPrograms() : Command("_get_programs") {}
+
+std::string
+GetPrograms::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                     const std::vector<std::string> &targets) {
+  (void)targets;
+  std::string result;
+  for (const auto &[name, prog] : programs) {
+    result += name + ":*\n";
+    for (Process *proc : prog->getProcesses())
+      result += name + ":" + proc->getName() + "\n";
+  }
+  return result;
+}
+
+GetCommands::GetCommands() : Command("_get_commands") {}
+
+std::string
+GetCommands::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+                     const std::vector<std::string> &targets) {
+  (void)targets;
+  (void)programs;
+  return "start\nstop\nstatus\nrestart\nreload\npid\nshutdown\nhelp\nfg\n";
+}
+
+Fg::Fg() : Command("fg") {}
+
+std::string
+Fg::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
+            const std::vector<std::string> &targets) {
+  if (targets.empty())
+    return "Error: fg requires a target process.\n";
+
+  if (targets.size() > 1)
+    return "Error: fg accepts exactly ONE target.\n";
+
+  std::string error;
+  Program *prog = nullptr;
+  auto procs = resolveTarget(programs, targets[0], &prog, error);
+
+  if (!error.empty())
+    return error;
+
+  if (procs.size() != 1)
+    return "Error: fg requires exactly one process target\n";
+
+  Process *proc = procs[0];
+  if (proc->getState() != ProcessState::RUNNING)
+    return "Error: Process is not running.\n";
+  if (proc->getPtyMaster() < 0)
+    return "Error: Process has no PTY configured.\n";
+
+  return "INTERNAL_ATTACH:" + std::to_string(proc->getPtyMaster()) + ":" +
+         proc->getName();
 }

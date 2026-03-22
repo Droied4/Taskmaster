@@ -38,4 +38,6 @@ public:
   std::string executeCommand(const std::string &cmd,
                              const std::vector<std::string> &params);
   std::string getCommands();
+
+  Process *getExactProcess(const std::string &target);
 };

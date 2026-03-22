@@ -7,6 +7,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <sstream>
+#include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -14,7 +16,7 @@ Process::Process(const std::string &name, const std::string &program_name,
                  const ProgramConfig &config)
     : _name(name), _program_name(program_name), _status_msg("Not started"),
       _config(config), _pid(0), _state(ProcessState::STOPPED), _retries(0),
-      _start_time(0), _end_time(0), _stop_start_time(0) {
+      _pty_master(-1), _start_time(0), _end_time(0), _stop_start_time(0) {
   ASSERT(!_name.empty(), "Process must have a name");
   ASSERT(!_program_name.empty(), "Process must have a program name");
   ASSERT(!_config.cmd.empty(), "Process must have a command");
@@ -48,6 +50,44 @@ std::vector<char *> Process::build_argv() const {
   return argv;
 }
 
+int Process::ptySetup() {
+  if (_pty_master >= 0) {
+    close(_pty_master);
+    _pty_master = -1;
+  }
+
+  _pty_master = posix_openpt(O_RDWR | O_NOCTTY);
+  if (_pty_master < 0) {
+    Logs::error() << "Failed to initialize PTY master for: " << _name << "\n";
+    return -1;
+  }
+
+  if (grantpt(_pty_master) != 0 || unlockpt(_pty_master) != 0) {
+    Logs::error() << "Failed to grant/unlock PTY for: " << _name << "\n";
+    close(_pty_master);
+    _pty_master = -1;
+    return -1;
+  }
+
+  char *slave_name = ptsname(_pty_master);
+  if (!slave_name) {
+    Logs::error() << "Failed to get PTY slave name for: " << _name << "\n";
+    close(_pty_master);
+    _pty_master = -1;
+    return -1;
+  }
+
+  int pty_slave = open(slave_name, O_RDWR);
+  if (pty_slave < 0) {
+    Logs::error() << "Failed to open PTY slave for: " << _name << "\n";
+    close(_pty_master);
+    _pty_master = -1;
+    return -1;
+  }
+
+  return pty_slave;
+}
+
 bool Process::spawn() {
   ASSERT(_state == ProcessState::STOPPED || _state == ProcessState::EXITED ||
              _state == ProcessState::BACKOFF || _state == ProcessState::FATAL,
@@ -73,6 +113,19 @@ bool Process::spawn() {
 
   fcntl(error_pipe[1], F_SETFD, FD_CLOEXEC);
 
+  int pty_slave = ptySetup();
+  if (pty_slave < 0) {
+    close(error_pipe[0]);
+    close(error_pipe[1]);
+    for (char *arg : argv)
+      if (arg)
+        free(arg);
+    for (char *env : envp)
+      if (env)
+        free(env);
+    return false;
+  }
+
   _pid = fork();
 
   if (_pid < 0) {
@@ -96,7 +149,8 @@ bool Process::spawn() {
 
     close(error_pipe[0]);
 
-    setpgid(0, 0); // crea su propio grupo de procesos para el fg
+    close(_pty_master);
+    setsid();
 
     umask(_config.umask);
 
@@ -108,39 +162,37 @@ bool Process::spawn() {
       }
     }
 
-    // esto probablemente fixee el tema de que la terminal queda colgada cuando
-    // se cierra abruptamente
-    int fd_in = open("/dev/null", O_RDONLY);
-    if (fd_in < 0) {
-      int err = errno;
-      write(error_pipe[1], &err, sizeof(err));
-      _exit(1);
-    }
-    dup2(fd_in, STDIN_FILENO);
-    close(fd_in);
+    dup2(pty_slave, STDIN_FILENO);
 
-    const char *out_path =
-        _config.stdout_path.empty() ? "/dev/null" : _config.stdout_path.c_str();
-
-    int fd_out = open(out_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (fd_out < 0) {
-      int err = errno;
-      write(error_pipe[1], &err, sizeof(err));
-      _exit(1);
+    if (!_config.stdout_path.empty()) {
+      int fd_out = open(_config.stdout_path.c_str(),
+                        O_WRONLY | O_CREAT | O_APPEND, 0644);
+      if (fd_out < 0) {
+        int err = errno;
+        write(error_pipe[1], &err, sizeof(err));
+        _exit(1);
+      }
+      dup2(fd_out, STDOUT_FILENO);
+      close(fd_out);
+    } else {
+      dup2(pty_slave, STDOUT_FILENO);
     }
-    dup2(fd_out, STDOUT_FILENO);
-    close(fd_out);
-    const char *err_path =
-        _config.stderr_path.empty() ? "/dev/null" : _config.stderr_path.c_str();
-    int fd_err = open(err_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (fd_err < 0) {
-      int err = errno;
-      write(error_pipe[1], &err, sizeof(err));
-      _exit(1);
-    }
-    dup2(fd_err, STDERR_FILENO);
-    close(fd_err);
 
+    if (!_config.stderr_path.empty()) {
+      int fd_err = open(_config.stderr_path.c_str(),
+                        O_WRONLY | O_CREAT | O_APPEND, 0644);
+      if (fd_err < 0) {
+        int err = errno;
+        write(error_pipe[1], &err, sizeof(err));
+        _exit(1);
+      }
+      dup2(fd_err, STDERR_FILENO);
+      close(fd_err);
+    } else {
+      dup2(pty_slave, STDERR_FILENO);
+    }
+
+    close(pty_slave);
     execvpe(argv[0], argv.data(), envp.data());
 
     int err = errno;
@@ -149,6 +201,10 @@ bool Process::spawn() {
   }
 
   close(error_pipe[1]);
+  close(pty_slave);
+
+  int flags = fcntl(_pty_master, F_GETFL, 0);
+  fcntl(_pty_master, F_SETFL, flags | O_NONBLOCK);
 
   for (char *arg : argv)
     if (arg)
@@ -267,3 +323,5 @@ time_t Process::getStopStartTime() const { return _stop_start_time; }
 int Process::getRetries() const { return _retries; }
 
 const std::string &Process::getStatusMsg() const { return _status_msg; }
+
+int Process::getPtyMaster() const { return _pty_master; }

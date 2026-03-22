@@ -30,6 +30,9 @@ ProcessManager::ProcessManager(const std::string &config_path)
   _commands["shutdown"] = std::make_unique<Shutdown>();
   _commands["pid"] = std::make_unique<Pid>();
   _commands["help"] = std::make_unique<Help>();
+  _commands["fg"] = std::make_unique<Fg>();
+  _commands["_get_programs"] = std::make_unique<GetPrograms>();
+  _commands["_get_commands"] = std::make_unique<GetCommands>();
 }
 
 ProcessManager::~ProcessManager() {
@@ -69,37 +72,15 @@ Program *ProcessManager::findProgramByProcess(Process *proc) {
 std::string
 ProcessManager::executeCommand(const std::string &cmd,
                                const std::vector<std::string> &params) {
-
   ASSERT(!cmd.empty(), "Command cannot be empty");
+
   auto it = _commands.find(cmd);
 
-  if (it == _commands.end() && cmd != "_get_programs" &&
-      cmd != "_get_commands") {
+  if (it == _commands.end()) {
     return "Error: Unknown command '" + cmd + "'.\n";
   }
 
-  if (cmd == "_get_programs")
-    return getPrograms();
-  if (cmd == "_get_commands")
-    return getCommands();
-
-  if (params.empty() && cmd != "status" && cmd != "reload" &&
-      cmd != "shutdown" && cmd != "help") {
-    return "Error: Command '" + cmd + "' requires at least one target.\n";
-  }
-
-  static std::set<std::string> no_params_cmd = {"reload", "shutdown"};
-
-  std::string response = "";
-  if (params.empty() || no_params_cmd.find(cmd) != no_params_cmd.end()) {
-    response += it->second->execute(_programs, "");
-  } else {
-    for (const std::string &target : params) {
-      response += it->second->execute(_programs, target);
-    }
-  }
-
-  return response;
+  return it->second->execute(_programs, params);
 }
 
 void ProcessManager::reloadConfig() {
@@ -318,6 +299,25 @@ void ProcessManager::updateRunningStates() {
       }
     }
   }
+}
+
+Process *ProcessManager::getExactProcess(const std::string &target) {
+  size_t colon = target.find(':');
+
+  if (colon == std::string::npos)
+    return nullptr;
+
+  std::string prog_name = target.substr(0, colon);
+  std::string proc_name = target.substr(colon + 1);
+
+  auto it = _programs.find(prog_name);
+  if (it != _programs.end()) {
+    for (Process *p : it->second->getProcesses()) {
+      if (p->getName() == proc_name)
+        return p;
+    }
+  }
+  return nullptr;
 }
 
 std::string ProcessManager::getCommands() {

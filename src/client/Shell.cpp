@@ -74,12 +74,17 @@ char **Shell::taskmaster_completion(const char *text, int start, int end) {
     std::string first_word;
     iss >> first_word;
 
-    if (first_word == "start" || first_word == "stop" ||
-        first_word == "restart" || first_word == "status") {
-      return rl_completion_matches(text, program_generator);
-    }
-    if (first_word == "help") {
-      return rl_completion_matches(text, command_generator);
+    std::string command =
+        std::find(instance->_commands.begin(), instance->_commands.end(),
+                  first_word) != instance->_commands.end()
+            ? first_word
+            : "";
+
+    if (!command.empty()) {
+      if (command != "help")
+        return rl_completion_matches(text, program_generator);
+      else
+        return rl_completion_matches(text, command_generator);
     }
   }
   return nullptr;

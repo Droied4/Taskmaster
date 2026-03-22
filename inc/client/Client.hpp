@@ -11,4 +11,5 @@ public:
   ~Client();
 
   std::string send(const std::string &command);
+  void attachToProcess(int socket_fd);
 };
