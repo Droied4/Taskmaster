@@ -89,7 +89,7 @@ void Client::attachToProcess(int socket_fd) {
 
   bool attached = true;
 
-  std::cout << "\r\n[Attached to process. Press Ctrl+Q to detach]\r\n";
+  std::cout << "\r\n[Attached to process. Press Ctrl-C to detach]\r\n";
 
   while (attached) {
     if (poll(fds, 2, -1) < 0)
@@ -99,7 +99,7 @@ void Client::attachToProcess(int socket_fd) {
       int n = read(STDIN_FILENO, buf, sizeof(buf));
       if (n > 0) {
         for (int i = 0; i < n; ++i) {
-          if (buf[i] == 3) { // Ctrl+C
+          if (buf[i] == 3) { // significa Ctrl+C
             attached = false;
             break;
           }
