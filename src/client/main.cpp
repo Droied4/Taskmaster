@@ -1,8 +1,10 @@
 #include "Client.hpp"
 #include "ResponseFormatter.hpp"
 #include "Shell.hpp"
+#include <csignal>
 
 int main() {
+  signal(SIGPIPE, SIG_IGN);
   Client client("/tmp/taskmaster.sock");
 
   ResponseFormatter formatter;
