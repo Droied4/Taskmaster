@@ -140,6 +140,8 @@ void ProcessManager::reloadConfig() {
 void ProcessManager::shutdownAll() {
   for (const auto &[name, prog] : _programs)
     prog->stop();
+  for (const auto &prog : _graveyard)
+    prog->stop();
 }
 
 bool ProcessManager::isExpectedExitCode(int exit_code,
@@ -281,26 +283,32 @@ void ProcessManager::reap() {
 
 void ProcessManager::updateRunningStates() {
   time_t now = time(NULL);
-  for (const auto &[name, prog] : _programs) {
+
+  auto checkStates = [&](Program *prog) {
     for (Process *proc : prog->getProcesses()) {
       if (proc->getState() == ProcessState::STARTING) {
         if (now - proc->getStartTime() >= proc->getConfig().starttime) {
           proc->setState(ProcessState::RUNNING);
           proc->resetRetries();
           Logs::debug() << "[ProcessManager] " << proc->getName()
-                        << " is now RUNNING (starttime reached)\n";
+                        << " is now RUNNING\n";
         }
       } else if (proc->getState() == ProcessState::STOPPING) {
         time_t stop_elapsed = now - proc->getStopStartTime();
         if (stop_elapsed >= proc->getConfig().stoptime) {
           Logs::info() << "[ProcessManager] " << proc->getName()
-                       << " did not stop gracefully after "
-                       << proc->getConfig().stoptime << "s, sending SIGKILL\n";
+                       << " did not stop gracefully, sending SIGKILL\n";
           kill(proc->getPid(), SIGKILL);
+          proc->setStopStartTime(now);
         }
       }
     }
-  }
+  };
+
+  for (const auto &[name, prog] : _programs)
+    checkStates(prog.get());
+  for (const auto &prog : _graveyard)
+    checkStates(prog.get());
 }
 
 Process *ProcessManager::getExactProcess(const std::string &target) {
