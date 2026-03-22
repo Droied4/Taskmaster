@@ -320,6 +320,25 @@ void ProcessManager::updateRunningStates() {
   }
 }
 
+Process *ProcessManager::getExactProcess(const std::string &target) {
+  size_t colon = target.find(':');
+
+  if (colon == std::string::npos)
+    return nullptr;
+
+  std::string prog_name = target.substr(0, colon);
+  std::string proc_name = target.substr(colon + 1);
+
+  auto it = _programs.find(prog_name);
+  if (it != _programs.end()) {
+    for (Process *p : it->second->getProcesses()) {
+      if (p->getName() == proc_name)
+        return p;
+    }
+  }
+  return nullptr;
+}
+
 std::string ProcessManager::getCommands() {
   std::string result;
   for (const auto &pair : _commands) {
