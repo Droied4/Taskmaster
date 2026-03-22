@@ -183,7 +183,8 @@ void Daemon::run() {
   signal(SIGPIPE, SIG_IGN);
   Logs::debug() << "pid: " << getpid() << "\n";
   while (42) {
-    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 100);
+    int timeout = _is_shutting_down ? 10 : 100;
+    int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, timeout);
     for (int i = 0; i < nfds; ++i) {
       int current_fd = events[i].data.fd;
 
