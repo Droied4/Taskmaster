@@ -53,6 +53,7 @@ public:
   std::string getUptime() const;
   std::string getFormattedEndTime() const;
 
+  void setStopStartTime(time_t t);
   void setState(ProcessState state);
   void setEndTime(time_t t);
   void setStatusMsg(const std::string &msg);

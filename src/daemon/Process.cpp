@@ -300,6 +300,8 @@ void Process::closePty() {
   }
 }
 
+void Process::setStopStartTime(time_t t) { _stop_start_time = t; }
+
 void Process::setState(ProcessState state) { _state = state; }
 
 void Process::setEndTime(time_t t) { _end_time = t; }
