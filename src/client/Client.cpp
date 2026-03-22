@@ -98,10 +98,12 @@ void Client::attachToProcess(int socket_fd) {
   fds[2].fd = sig_fd;
   fds[2].events = POLLIN;
 
+  std::cout << "\033[?1049h\033[H";
+  std::cout << "\r\n[Attached to process. Press Ctrl+C to detach]\r\n";
+  std::cout.flush();
+
   char buf[1024];
   bool attached = true;
-
-  std::cout << "\r\n[Attached to process. Press Ctrl+C to detach]\r\n";
 
   struct winsize ws;
   if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) != -1) {
@@ -154,5 +156,7 @@ void Client::attachToProcess(int socket_fd) {
   close(sig_fd);
   sigprocmask(SIG_UNBLOCK, &mask, nullptr);
 
+  std::cout << "\033[?1049l";
   std::cout << "\r\n[Detached from process]\r\n";
+  std::cout.flush();
 }
