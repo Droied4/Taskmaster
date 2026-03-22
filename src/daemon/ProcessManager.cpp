@@ -226,6 +226,8 @@ void ProcessManager::reap() {
                    << ") killed by signal " << WTERMSIG(status) << "\n";
     }
 
+    proc->closePty();
+
     if (was_signaled) {
       Program *prog = findProgramByProcess(proc);
       if (prog && prog->isRestarting()) {
@@ -338,4 +340,16 @@ std::string ProcessManager::getPrograms() {
       result += name + ":" + proc->getName() + "\n";
   }
   return result;
+}
+
+bool ProcessManager::hasActiveProcesses() const {
+  for (const auto &[name, prog] : _programs) {
+    if (!prog->isFullyStopped())
+      return true;
+  }
+  for (const auto &prog : _graveyard) {
+    if (!prog->isFullyStopped())
+      return true;
+  }
+  return false;
 }

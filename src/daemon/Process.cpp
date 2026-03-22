@@ -26,6 +26,7 @@ Process::~Process() {
   if (_state == ProcessState::RUNNING || _state == ProcessState::STARTING) {
     killProcess();
   }
+  closePty();
 }
 
 std::vector<char *> Process::build_envp() const {
@@ -290,6 +291,13 @@ std::string Process::getFormattedEndTime() const {
   char buffer[32];
   strftime(buffer, sizeof(buffer), "%b %d %I:%M %p", tm_info);
   return std::string(buffer);
+}
+
+void Process::closePty() {
+  if (_pty_master >= 0) {
+    close(_pty_master);
+    _pty_master = -1;
+  }
 }
 
 void Process::setState(ProcessState state) { _state = state; }

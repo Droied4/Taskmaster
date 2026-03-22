@@ -60,5 +60,6 @@ public:
   void incrementRetries();
   void resetRetries();
   int ptySetup();
+  void closePty();
   int getPtyMaster() const;
 };

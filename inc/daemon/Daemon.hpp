@@ -15,6 +15,7 @@ private:
   int _epfd;
   int _sig_fd;
   bool _daemon;
+  bool _is_shutting_down;
   Server _serv;
   ProcessManager _manager;
   CommandParser _cparser;
@@ -24,7 +25,8 @@ private:
   void setupSignals();
   void handlePTYInput(int client_fd);
   void handlePTYOutput(int pty_fd);
-  int handleSignal();
+  void handlePTYResize(int pty_fd, std::string &data);
+  void handleSignal();
   void processClientCommand(int client_fd, const std::string &input);
 
 public:

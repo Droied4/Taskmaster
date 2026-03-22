@@ -1,7 +1,12 @@
 #include "Client.hpp"
+#include <csignal>
 #include <cstring>
+#include <errno.h>
 #include <iostream>
 #include <poll.h>
+#include <signal.h>
+#include <sys/ioctl.h>
+#include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <termios.h>
@@ -69,37 +74,51 @@ std::string Client::send(const std::string &command) {
   close(sock);
   return response;
 }
+
 void Client::attachToProcess(int socket_fd) {
   struct termios oldt, newt;
   tcgetattr(STDIN_FILENO, &oldt);
 
   newt = oldt;
-
   newt.c_lflag &= ~(ICANON | ECHO | ISIG);
-
   tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-  struct pollfd fds[2];
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGWINCH);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+  int sig_fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+
+  struct pollfd fds[3]; // teclado socket y signal
   fds[0].fd = STDIN_FILENO;
   fds[0].events = POLLIN;
   fds[1].fd = socket_fd;
   fds[1].events = POLLIN;
+  fds[2].fd = sig_fd;
+  fds[2].events = POLLIN;
 
   char buf[1024];
-
   bool attached = true;
 
-  std::cout << "\r\n[Attached to process. Press Ctrl-C to detach]\r\n";
+  std::cout << "\r\n[Attached to process. Press Ctrl+C to detach]\r\n";
+
+  struct winsize ws;
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) != -1) {
+    std::string msg = "\x1EWINCH:" + std::to_string(ws.ws_row) + ";" +
+                      std::to_string(ws.ws_col) + "\x1E";
+    write(socket_fd, msg.c_str(), msg.length());
+  }
 
   while (attached) {
-    if (poll(fds, 2, -1) < 0)
+    if (poll(fds, 3, -1) < 0)
       break;
 
     if (fds[0].revents & POLLIN) {
       int n = read(STDIN_FILENO, buf, sizeof(buf));
       if (n > 0) {
         for (int i = 0; i < n; ++i) {
-          if (buf[i] == 3) { // significa Ctrl+C
+          if (buf[i] == 3) { // Ctrl+C
             attached = false;
             break;
           }
@@ -118,7 +137,22 @@ void Client::attachToProcess(int socket_fd) {
         write(STDOUT_FILENO, buf, n);
       }
     }
+
+    if (fds[2].revents & POLLIN) {
+      struct signalfd_siginfo fdsi;
+      read(sig_fd, &fdsi, sizeof(fdsi));
+
+      if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) != -1) {
+        std::string msg = "\x1EWINCH:" + std::to_string(ws.ws_row) + ";" +
+                          std::to_string(ws.ws_col) + "\x1E";
+        write(socket_fd, msg.c_str(), msg.length());
+      }
+    }
   }
+
   tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  close(sig_fd);
+  sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+
   std::cout << "\r\n[Detached from process]\r\n";
 }

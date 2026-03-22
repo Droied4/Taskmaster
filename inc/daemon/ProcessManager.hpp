@@ -40,4 +40,6 @@ public:
   std::string getCommands();
 
   Process *getExactProcess(const std::string &target);
+
+  bool hasActiveProcesses() const;
 };
