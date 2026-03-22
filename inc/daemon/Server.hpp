@@ -20,6 +20,7 @@ public:
   void acceptConnection(int epfd);
   void bindListen();
   std::string readData(int fd, int epfd);
-  void sendData(int client_socket, std::string message);
+  void sendData(int client_socket, std::string message,
+                bool close_write = true);
   int getServerFd() const;
 };

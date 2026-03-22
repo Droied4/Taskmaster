@@ -66,9 +66,11 @@ void Server::bindListen() {
   Logs::info() << "Server is now Listening!\n";
 }
 
-void Server::sendData(int client_socket, std::string message) {
+void Server::sendData(int client_socket, std::string message,
+                      bool close_write) {
   send(client_socket, message.c_str(), strlen(message.c_str()), 0);
-  shutdown(client_socket, SHUT_WR);
+  if (close_write)
+    shutdown(client_socket, SHUT_WR);
 }
 
 std::string Server::readData(int fd, int epfd) {
