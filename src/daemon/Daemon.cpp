@@ -1,5 +1,6 @@
 #include "Daemon.hpp"
 #include "Logs.hpp"
+#include "Process.hpp"
 #include "Server.hpp"
 #include "common.hpp"
 #include <csignal>
@@ -57,10 +58,10 @@ void Daemon::run() {
   while (42) {
     int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, 100);
     for (int i = 0; i < nfds; ++i) {
-      int client_socket = events[i].data.fd;
-      if (client_socket == _serv.getServerFd())
+      int current_fd = events[i].data.fd;
+      if (current_fd == _serv.getServerFd())
         _serv.acceptConnection(_epfd);
-      else if (client_socket == _sig_fd) { // llega una nueva signal
+      else if (current_fd == _sig_fd) { // llega una nueva signal
         struct signalfd_siginfo fdsi;
 
         ssize_t s = read(_sig_fd, &fdsi, sizeof(struct signalfd_siginfo));
@@ -79,15 +80,70 @@ void Daemon::run() {
             return;
           }
         }
+      } else if (_client_to_pty.find(current_fd) != _client_to_pty.end()) {
+        char buf[1024];
+        int bytes = read(current_fd, buf, sizeof(buf));
+        int pty_fd = _client_to_pty[current_fd];
+
+        if (bytes <= 0) {
+          Logs::info() << "[Daemon] Client detached from PTY\n";
+          epoll_ctl(_epfd, EPOLL_CTL_DEL, current_fd, nullptr);
+          _client_to_pty.erase(current_fd);
+          _pty_to_client.erase(pty_fd);
+          close(current_fd);
+        } else {
+          write(pty_fd, buf, bytes);
+        }
+      } else if (_pty_to_client.find(current_fd) != _pty_to_client.end()) {
+        char buf[1024];
+        int bytes = read(current_fd, buf, sizeof(buf));
+        int client_fd = _pty_to_client[current_fd];
+
+        if (bytes <= 0) {
+          Logs::info() << "[Daemon] Process PTY closed during attach\n";
+          _serv.sendData(client_fd, "\n[Process Terminated]\n");
+          epoll_ctl(_epfd, EPOLL_CTL_DEL, current_fd, nullptr);
+          _pty_to_client.erase(current_fd);
+          _client_to_pty.erase(client_fd);
+          close(client_fd);
+        } else {
+          write(client_fd, buf, bytes);
+        }
       } else {
-        std::string input = _serv.readData(client_socket, this->_epfd);
+        std::string input = _serv.readData(current_fd, this->_epfd);
         std::string output;
         if (!input.empty()) {
           _cparser.setCommandParser(input);
           std::string cmd = _cparser.getCommand();
-          if (!cmd.empty()) {
-            output = _manager.executeCommand((cmd), _cparser.getParams());
-            _serv.sendData(client_socket, output);
+          std::vector<std::string> targets = _cparser.getParams();
+          if (cmd == "fg") {
+            if (targets.empty()) {
+              _serv.sendData(current_fd,
+                             "Error: fg requires a target process.\n");
+            } else {
+              Process *proc = _manager.getExactProcess(targets[0]);
+              if (proc && proc->getPtyMaster() >= 0 &&
+                  proc->getState() == ProcessState::RUNNING) {
+                int pty_fd = proc->getPtyMaster();
+
+                _client_to_pty[current_fd] = pty_fd;
+                _pty_to_client[pty_fd] = current_fd;
+
+                struct epoll_event ev;
+                ev.events = EPOLLIN | EPOLLRDHUP;
+                ev.data.fd = pty_fd;
+                epoll_ctl(_epfd, EPOLL_CTL_ADD, pty_fd, &ev);
+                _serv.sendData(current_fd, "ATTACH_OK\n", false);
+                Logs::info() << "[Daemon] Client attached to PTY\n";
+              } else {
+                _serv.sendData(
+                    current_fd,
+                    "Error: Process not found, not running, or has no PTY\n");
+              }
+            }
+          } else if (!cmd.empty()) {
+            output = _manager.executeCommand((cmd), targets);
+            _serv.sendData(current_fd, output);
           }
         }
       }
