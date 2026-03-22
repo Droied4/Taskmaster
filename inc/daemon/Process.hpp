@@ -21,6 +21,7 @@ private:
   pid_t _pid;
   ProcessState _state;
   int _retries;
+  int _pty_master;
   time_t _start_time;
   time_t _end_time;
   time_t _stop_start_time;
@@ -58,4 +59,6 @@ public:
   void resetStopStartTime();
   void incrementRetries();
   void resetRetries();
+  int ptySetup();
+  int getPtyMaster() const;
 };
