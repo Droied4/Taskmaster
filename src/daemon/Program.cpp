@@ -21,10 +21,7 @@ Program::Program(const std::string &name, const ProgramConfig &config)
   }
 }
 
-Program::~Program() {
-  Logs::info() << "[Program] Cleaning up " << _name << "...\n";
-  _processes.clear();
-}
+Program::~Program() { _processes.clear(); }
 
 void Program::start() {
   Logs::info() << "[Program] Starting " << _name << " (" << _config.numprocs
@@ -72,7 +69,7 @@ bool Program::isFullyStopped() const {
   for (const auto &proc : _processes) {
     ProcessState s = proc->getState();
     if (s == ProcessState::RUNNING || s == ProcessState::STARTING ||
-        s == ProcessState::BACKOFF) {
+        s == ProcessState::BACKOFF || s == ProcessState::STOPPING) {
       return false;
     }
   }
