@@ -50,6 +50,7 @@ void Daemon::handlePTYInput(int client_fd) {
   if (bytes <= 0) {
     Logs::info() << "[Daemon] Client detached from PTY\n";
     epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
+    epoll_ctl(_epfd, EPOLL_CTL_DEL, client_fd, nullptr);
     _client_to_pty.erase(client_fd);
     _pty_to_client.erase(pty_fd);
     close(client_fd);
@@ -73,6 +74,7 @@ void Daemon::handlePTYOutput(int pty_fd) {
     Logs::info() << "[Daemon] Process PTY closed during attach\n";
     _serv.sendData(client_fd, "\r\n[Process Terminated]\r\n");
     epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
+    epoll_ctl(_epfd, EPOLL_CTL_DEL, client_fd, nullptr);
     _pty_to_client.erase(pty_fd);
     _client_to_pty.erase(client_fd);
     close(client_fd);
@@ -95,6 +97,17 @@ void Daemon::handleSignal() {
       Logs::info() << "[Daemon] Received signal to terminate, shutting down..."
                    << std::endl;
       _is_shutting_down = true;
+
+      for (auto const &[client_fd, pty_fd] : _client_to_pty) {
+        _serv.sendData(client_fd,
+                       "\r\n[Daemon shutting down. Detaching...]\r\n");
+        epoll_ctl(_epfd, EPOLL_CTL_DEL, client_fd, nullptr);
+        epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
+        close(client_fd);
+      }
+
+      _client_to_pty.clear();
+      _pty_to_client.clear();
       _manager.shutdownAll();
     }
   }
@@ -152,6 +165,12 @@ void Daemon::processClientCommand(int client_fd, const std::string &input) {
 
     int pty_fd = std::stoi(pty_info.substr(0, separator));
     std::string proc_name = pty_info.substr(separator + 1);
+
+    if (_pty_to_client.find(pty_fd) != _pty_to_client.end()) {
+      _serv.sendData(client_fd,
+                     "Error: PTY already attached to another client.\n");
+      return;
+    }
 
     _client_to_pty[client_fd] = pty_fd;
     _pty_to_client[pty_fd] = client_fd;
