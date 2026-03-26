@@ -1,6 +1,5 @@
 #include "Daemon.hpp"
 #include "Logs.hpp"
-#include "ProcessManager.hpp"
 #include <getopt.h>
 
 static void help(void) {
@@ -11,7 +10,7 @@ static void help(void) {
 --loglevel 		-e -- log level\n\
 --nodaemon 		-n -- run in the foreground\n\
 --version 		-v -- print taskmasterd version number and exit\n\
-\n";
+";
 }
 
 static Logs::Level logLevel(std::string optarg) {
@@ -29,14 +28,14 @@ static Logs::Level logLevel(std::string optarg) {
 	- info\n\
 	- warning\n\
 	- error\n";
-    exit(1);
+    exit(0);
   }
 }
 
 static struct Config flagCases(int ac, char *av[]) {
   struct Config conf;
 
-  const char *short_opts = ":?hnvc:l:e:";
+  const char *short_opts = "hnvc:l:e:";
 
   const option long_opts[] = {
       {"help", no_argument, nullptr, 'h'},
@@ -55,10 +54,10 @@ static struct Config flagCases(int ac, char *av[]) {
     switch (opt) {
     case 'h':
       help();
-      exit(1);
+      exit(0);
     case 'v':
       std::cout << "Taskmasterd v0.1\n";
-      exit(1);
+      exit(0);
     case 'l':
       Logs::setFile(optarg);
       break;
@@ -71,8 +70,19 @@ static struct Config flagCases(int ac, char *av[]) {
     case 'c':
       conf.config_path = optarg;
       break;
+    default:
+      help();
+      exit(1);
     }
   }
+
+  if (optind < ac) {
+    std::cerr << "./taskmasterd: invalid option --" << " '" << av[optind] << "'"
+              << "\n";
+    help();
+    exit(1);
+  }
+
   return conf;
 }
 
