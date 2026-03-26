@@ -11,7 +11,7 @@
 
 Daemon::Daemon(struct Config conf)
     : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _daemon(conf.daemonize),
-      _is_shutting_down(false), _serv(_epfd), _manager(conf.config_path) {
+      _is_shutting_down(false), _manager(conf.config_path), _serv(_epfd) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
 }

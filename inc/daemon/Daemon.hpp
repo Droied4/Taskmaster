@@ -16,9 +16,9 @@ private:
   int _sig_fd;
   bool _daemon;
   bool _is_shutting_down;
-  Server _serv;
   ProcessManager _manager;
   CommandParser _cparser;
+  Server _serv;
   std::map<int, int> _client_to_pty;
   std::map<int, int> _pty_to_client;
 
