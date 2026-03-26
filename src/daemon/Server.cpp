@@ -86,7 +86,7 @@ std::string Server::readData(int fd, int epfd) {
     return ("");
   }
   buffer[bytes] = '\0';
-  Logs::debug() << "Data read: " << buffer;
+  Logs::debug() << "Data read: " << buffer << "\n";
   std::string input(buffer);
   return (input);
 }
