@@ -17,9 +17,6 @@ ProcessManager::ProcessManager(const std::string &config_path)
   }
   for (const auto &[name, config] : configs) {
     _programs[name] = std::make_unique<Program>(name, config);
-    if (config.autostart) {
-      _programs[name]->start();
-    }
   }
 
   _commands["start"] = std::make_unique<Start>();
@@ -142,6 +139,14 @@ void ProcessManager::shutdownAll() {
     prog->stop();
   for (const auto &prog : _graveyard)
     prog->stop();
+}
+
+void ProcessManager::startAutostart() {
+  for (const auto &[name, prog] : _programs) {
+    if (prog->getConfig().autostart) {
+      prog->start();
+    }
+  }
 }
 
 bool ProcessManager::isExpectedExitCode(int exit_code,

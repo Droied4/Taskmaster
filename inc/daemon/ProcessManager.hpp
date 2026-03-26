@@ -31,6 +31,7 @@ public:
 
   void reloadConfig();
   void shutdownAll();
+  void startAutostart();
 
   void reap();
   void updateRunningStates();

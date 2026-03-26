@@ -201,6 +201,7 @@ void Daemon::run() {
   _serv.bindListen();
   signal(SIGPIPE, SIG_IGN);
   Logs::debug() << "pid: " << getpid() << "\n";
+  _manager.startAutostart();
   while (42) {
     int timeout = _is_shutting_down ? 10 : 100;
     int nfds = epoll_wait(_epfd, events, EVENTS_SIZE, timeout);
