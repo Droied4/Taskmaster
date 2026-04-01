@@ -16,7 +16,14 @@ Daemon::Daemon(struct Config conf)
   signal(SIGPIPE, SIG_IGN);
 }
 
-Daemon::~Daemon() {}
+Daemon::~Daemon() {
+  if (_sig_fd >= 0) {
+    close(_sig_fd);
+  }
+  if (_epfd >= 0) {
+    close(_epfd);
+  }
+}
 
 void Daemon::setupSignals() {
   sigset_t mask;      // bitmask for signals
