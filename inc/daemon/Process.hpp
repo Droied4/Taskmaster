@@ -14,14 +14,14 @@ enum class ProcessState {
 
 class Process {
 private:
+  ProgramConfig _config;
   std::string _name;
   std::string _program_name;
   std::string _status_msg;
-  ProgramConfig _config;
-  pid_t _pid;
-  ProcessState _state;
   int _retries;
   int _pty_master;
+  pid_t _pid;
+  ProcessState _state;
   time_t _start_time;
   time_t _end_time;
   time_t _stop_start_time;

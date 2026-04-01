@@ -14,9 +14,10 @@
 
 Process::Process(const std::string &name, const std::string &program_name,
                  const ProgramConfig &config)
-    : _name(name), _program_name(program_name), _status_msg("Not started"),
-      _config(config), _pid(0), _state(ProcessState::STOPPED), _retries(0),
-      _pty_master(-1), _start_time(0), _end_time(0), _stop_start_time(0) {
+    : _config(config), _name(name), _program_name(program_name),
+      _status_msg("Not started"), _retries(0), _pty_master(-1), _pid(0),
+      _state(ProcessState::STOPPED), _start_time(0), _end_time(0),
+      _stop_start_time(0) {
   ASSERT(!_name.empty(), "Process must have a name");
   ASSERT(!_program_name.empty(), "Process must have a program name");
   ASSERT(!_config.cmd.empty(), "Process must have a command");
