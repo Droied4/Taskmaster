@@ -30,26 +30,22 @@ Process::~Process() {
   closePty();
 }
 
-std::vector<char *> Process::build_envp() const {
-  std::vector<char *> envp;
+std::vector<std::string> Process::build_envp() const {
+  std::vector<std::string> env_strings;
   for (const auto &[key, val] : _config.env) {
-    std::string env_str = key + "=" + val;
-    envp.push_back(strdup(env_str.c_str()));
+    env_strings.push_back(key + "=" + val);
   }
-  envp.push_back(nullptr);
-  return envp;
+  return env_strings;
 }
 
-std::vector<char *> Process::build_argv() const {
-  std::vector<char *> argv;
+std::vector<std::string> Process::build_argv() const {
+  std::vector<std::string> argv_strings;
   std::istringstream iss(_config.cmd);
   std::string token;
-
   while (iss >> token) {
-    argv.push_back(strdup(token.c_str()));
+    argv_strings.push_back(token);
   }
-  argv.push_back(nullptr);
-  return argv;
+  return argv_strings;
 }
 
 int Process::ptySetup() {
@@ -95,8 +91,21 @@ bool Process::spawn() {
              _state == ProcessState::BACKOFF || _state == ProcessState::FATAL,
          "Attempted to spawn a process that is already active");
 
-  std::vector<char *> argv = build_argv();
-  std::vector<char *> envp = build_envp();
+  std::vector<std::string> argv_strings = build_argv();
+  std::vector<std::string> envp_strings = build_envp();
+
+  std::vector<char *> argv;
+
+  for (auto &str : argv_strings) {
+    argv.push_back(str.data());
+  }
+  argv.push_back(nullptr);
+
+  std::vector<char *> envp;
+  for (auto &str : envp_strings) {
+    envp.push_back(str.data());
+  }
+  envp.push_back(nullptr);
 
   ASSERT(argv.size() >= 2, "argv must have at least command and nullptr");
   ASSERT(argv[0] != nullptr, "argv[0] (command) cannot be null");
@@ -104,12 +113,6 @@ bool Process::spawn() {
   int error_pipe[2];
   if (pipe(error_pipe) < 0) {
     Logs::error() << "Failed to create error pipe for: " << _name << "\n";
-    for (char *arg : argv)
-      if (arg)
-        free(arg);
-    for (char *env : envp)
-      if (env)
-        free(env);
     return false;
   }
 
@@ -119,12 +122,6 @@ bool Process::spawn() {
   if (pty_slave < 0) {
     close(error_pipe[0]);
     close(error_pipe[1]);
-    for (char *arg : argv)
-      if (arg)
-        free(arg);
-    for (char *env : envp)
-      if (env)
-        free(env);
     return false;
   }
 
@@ -135,12 +132,6 @@ bool Process::spawn() {
     close(error_pipe[0]);
     close(error_pipe[1]);
     _state = ProcessState::FATAL;
-    for (char *arg : argv)
-      if (arg)
-        free(arg);
-    for (char *env : envp)
-      if (env)
-        free(env);
     return false;
   }
 
@@ -207,13 +198,6 @@ bool Process::spawn() {
 
   int flags = fcntl(_pty_master, F_GETFL, 0);
   fcntl(_pty_master, F_SETFL, flags | O_NONBLOCK);
-
-  for (char *arg : argv)
-    if (arg)
-      free(arg);
-  for (char *env : envp)
-    if (env)
-      free(env);
 
   int exec_errno = 0;
   ssize_t n = read(error_pipe[0], &exec_errno, sizeof(exec_errno));

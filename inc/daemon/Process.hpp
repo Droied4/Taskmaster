@@ -26,8 +26,8 @@ private:
   time_t _end_time;
   time_t _stop_start_time;
 
-  std::vector<char *> build_envp() const;
-  std::vector<char *> build_argv() const;
+  std::vector<std::string> build_envp() const;
+  std::vector<std::string> build_argv() const;
 
 public:
   Process(const std::string &name, const std::string &program_name,
