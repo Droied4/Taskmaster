@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 Program::Program(const std::string &name, const ProgramConfig &config)
-    : _name(name), _config(config), _restarting(false) {
+    : _name(name), _restarting(false), _config(config) {
   ASSERT(!_name.empty(), "Program name cannot be empty");
   ASSERT(!_config.cmd.empty(), "Program command cannot be empty");
   ASSERT(_config.numprocs > 0, "Program must have at least 1 process");
