@@ -11,7 +11,7 @@
 
 Daemon::Daemon(struct Config conf)
     : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _daemon(conf.daemonize),
-      _is_shutting_down(false), _manager(conf.config_path), _serv(_epfd) {
+      _is_shutting_down(false), _serv(_epfd), _manager(conf.config_path) {
   ASSERT(_epfd >= 0, "Failed to create epoll instance");
   signal(SIGPIPE, SIG_IGN);
 }
@@ -188,6 +188,7 @@ void Daemon::processClientCommand(int client_fd, const std::string &input) {
     _serv.sendData(client_fd, output);
   }
 }
+
 void Daemon::setDaemon(bool value) { this->_daemon = value; }
 
 void Daemon::run() {
@@ -198,7 +199,6 @@ void Daemon::run() {
   }
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
-  _serv.bindListen();
   signal(SIGPIPE, SIG_IGN);
   Logs::debug() << "pid: " << getpid() << "\n";
   _manager.startAutostart();
