@@ -222,6 +222,7 @@ void ProcessManager::reap() {
 
     int exit_code = 0;
     bool was_signaled = false;
+    int term_sig = 0;
 
     if (WIFEXITED(status)) {
       exit_code = WEXITSTATUS(status);
@@ -229,27 +230,29 @@ void ProcessManager::reap() {
                    << ") exited with code " << exit_code << "\n";
     } else if (WIFSIGNALED(status)) {
       was_signaled = true;
+      term_sig = WTERMSIG(status);
+      exit_code = 128 + term_sig;
       Logs::info() << "[ProcessManager] " << proc->getName() << " (PID " << pid
-                   << ") killed by signal " << WTERMSIG(status) << "\n";
+                   << ") killed by signal " << term_sig << "\n";
     }
 
     proc->closePty();
+    ProcessState prev_state = proc->getState();
+    Program *prog = findProgramByProcess(proc);
 
-    if (was_signaled) {
-      Program *prog = findProgramByProcess(proc);
+    if (prev_state == ProcessState::STOPPING) {
+      proc->setState(ProcessState::STOPPED);
+      proc->setEndTime(time(NULL));
+      proc->setStatusMsg("Stopped");
+      proc->resetRetries();
+      proc->resetStopStartTime();
+
       if (prog && prog->isRestarting()) {
         handleRestartingProcess(proc, prog);
-      } else {
-        proc->setState(ProcessState::STOPPED);
-        proc->setEndTime(time(NULL));
-        proc->setStatusMsg("Stopped");
-        proc->resetRetries();
-        proc->resetStopStartTime();
       }
       continue;
     }
 
-    Program *prog = findProgramByProcess(proc);
     if (prog && prog->isRestarting()) {
       handleRestartingProcess(proc, prog);
       continue;
@@ -260,17 +263,21 @@ void ProcessManager::reap() {
     } else {
       proc->setEndTime(time(NULL));
       proc->resetStopStartTime();
-      if (isExpectedExitCode(exit_code, proc->getConfig().exitcodes)) {
+
+      if (!was_signaled &&
+          isExpectedExitCode(exit_code, proc->getConfig().exitcodes)) {
         proc->setState(ProcessState::EXITED);
         proc->resetRetries();
         Logs::info() << "[ProcessManager] " << proc->getName()
                      << " exited normally\n";
       } else {
         proc->setState(ProcessState::FATAL);
-        proc->setStatusMsg("Exited with unexpected code " +
-                           std::to_string(exit_code));
+        proc->setStatusMsg(was_signaled
+                               ? "Killed by signal " + std::to_string(term_sig)
+                               : "Exited with unexpected code " +
+                                     std::to_string(exit_code));
         Logs::warning() << "[ProcessManager] " << proc->getName()
-                        << " exited with unexpected code " << exit_code << "\n";
+                        << " failed\n";
       }
     }
   }
