@@ -26,6 +26,7 @@ Server::Server(int epfd) {
   ev.data.fd = this->_serv_fd;
 
   epoll_ctl(epfd, EPOLL_CTL_ADD, this->_serv_fd, &ev);
+  bindListen();
 }
 
 Server::~Server() {
@@ -47,7 +48,7 @@ void Server::bindListen() {
                   reinterpret_cast<sockaddr *>(&this->_serv_addr),
                   sizeof(this->_serv_addr)) == 0) {
         close(test);
-        std::cerr << "Server already running\n";
+        Logs::error() << "Server already running\n";
         exit(1);
       }
       close(test);
