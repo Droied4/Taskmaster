@@ -73,6 +73,10 @@ ProcessManager::executeCommand(const std::string &cmd,
 
   auto it = _commands.find(cmd);
 
+  if (cmd == "reload") {
+    return reloadConfig();
+  }
+
   if (it == _commands.end()) {
     return "Error: Unknown command '" + cmd + "'.\n";
   }
@@ -80,7 +84,8 @@ ProcessManager::executeCommand(const std::string &cmd,
   return it->second->execute(_programs, params);
 }
 
-void ProcessManager::reloadConfig() {
+std::string ProcessManager::reloadConfig() {
+  std::string report;
   Logs::info() << "[ProcessManager] Reloading config from: " << _config_path
                << "\n";
   std::map<std::string, ProgramConfig> new_configs;
@@ -89,7 +94,8 @@ void ProcessManager::reloadConfig() {
   if (!_parser.parse(_config_path, new_configs, error)) {
     Logs::error() << error << "\n";
     Logs::warning() << "Keeping existing configuration and running processes\n";
-    return;
+    return "Error: " + error +
+           "Keeping existing configuration and running processes\n";
   }
 
   std::vector<std::string> changed_programs;
@@ -98,9 +104,7 @@ void ProcessManager::reloadConfig() {
     if (new_configs.find(it->first) == new_configs.end()) {
       it->second->stop();
       _graveyard.push_back(std::move(it->second));
-      Logs::info() << it->first
-                   << " removed from config, stopping and removing from active "
-                      "programs\n";
+      report += it->first + ": removed\n";
       changed_programs.push_back(it->first);
       it = _programs.erase(it);
     } else {
@@ -112,13 +116,13 @@ void ProcessManager::reloadConfig() {
     auto it = _programs.find(name);
     if (it == _programs.end()) {
       _programs[name] = std::make_unique<Program>(name, new_cfg);
-      Logs::info() << name << " added to config, creating new program\n";
+      report += name + ": added\n";
       changed_programs.push_back(name);
       if (new_cfg.autostart)
         _programs[name]->start();
     } else {
       if (it->second->getConfig() != new_cfg) {
-        Logs::info() << name << " configuration changed\n";
+        report += name + ": configuration changed\n";
         it->second->stop();
         _graveyard.push_back(std::move(it->second));
         _programs[name] = std::make_unique<Program>(name, new_cfg);
@@ -130,8 +134,11 @@ void ProcessManager::reloadConfig() {
   }
 
   if (changed_programs.empty()) {
-    Logs::info() << "No configuration changes detected\n";
+    report += "No configuration changes detected\n";
   }
+
+  Logs::info() << report;
+  return report;
 }
 
 void ProcessManager::shutdownAll() {

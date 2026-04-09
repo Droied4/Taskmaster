@@ -9,10 +9,9 @@ class ProcessManager {
 private:
   std::string _config_path;
   std::map<std::string, std::unique_ptr<Program>> _programs;
+  std::map<std::string, std::unique_ptr<Command>> _commands;
   std::vector<std::unique_ptr<Program>> _graveyard;
   ConfigParser _parser;
-
-  std::map<std::string, std::unique_ptr<Command>> _commands;
 
   Process *findProcessByPid(pid_t pid);
   bool isExpectedExitCode(int exit_code, const std::vector<int> &exitcodes);
@@ -29,7 +28,7 @@ public:
   ProcessManager(const ProcessManager &obj) = delete;
   ProcessManager &operator=(const ProcessManager &obj) = delete;
 
-  void reloadConfig();
+  std::string reloadConfig();
   void shutdownAll();
   void startAutostart();
 
