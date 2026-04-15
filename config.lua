@@ -24,6 +24,13 @@ config.programs.cat = {
 	numprocs = 1,
 }
 
+config.programs.urandom_cat = {
+	cmd = "cat /dev/urandom",
+	autostart = true,
+	numprocs = 1,
+	stdout = "/dev/null",
+}
+
 config.programs.echo = {
 	cmd = "echo 'Hello, World!'",
 	autostart = true,
@@ -35,6 +42,7 @@ config.programs.echo = {
 config.programs.ls = {
 	cmd = "ls",
 	autostart = true,
+	workingdir = "/tmp",
 	autorestart = "always",
 	startretries = 5,
 	numprocs = 1,
@@ -73,11 +81,17 @@ config.programs.zsh = {
 	autorestart = "always",
 	startretries = 5,
 	stoptime = 5,
-	stopsignal = "SIGQUIT",
+	stopsignal = "SIGTERM",
 	env = {
 		TUQUI = "TUQUI",
 		TERM = "xterm",
 	},
+}
+
+config.programs.spam_test = {
+	cmd = "yes spam",
+	autostart = true,
+	numprocs = 1,
 }
 
 return config
