@@ -305,10 +305,27 @@ std::string
 Pid::execute(std::map<std::string, std::unique_ptr<Program>> &programs,
              const std::vector<std::string> &targets) {
   (void)programs;
-  if (!targets.empty())
-    return "Error: pid command does not take any parameters.\n";
+  if (targets.empty())
+  	return std::to_string(getpid()) + "\n";
 
-  return std::to_string(getpid()) + "\n";
+  std::string report = "";
+  for (const std::string &target : targets) {
+    std::string error;
+    Program *prog = nullptr;
+    auto procs = resolveTarget(programs, target, &prog, error);
+
+    if (!error.empty()) {
+      report += error;
+      continue;
+    }
+
+    for (Process *proc : procs) {
+      ASSERT(proc != nullptr, "Program pointer cannot be null");
+	  report += std::to_string(proc->getPid()); 
+	  report += "\n"; 
+    }
+  }
+  return report;
 }
 
 Shutdown::Shutdown() : Command("shutdown") {}
