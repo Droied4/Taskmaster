@@ -3,7 +3,6 @@
 #include "common.hpp"
 #include <cassert>
 #include <csignal>
-#include <filesystem>
 #include <functional>
 
 ConfigParser::ConfigParser() {
@@ -164,9 +163,6 @@ bool ConfigParser::parsePath(const std::string &key,
   out = lua_tostring(L, -1);
   if (out.empty())
     CONFIG_ERROR(prog_name, "'" + key + "' cannot be an empty string", error);
-  std::filesystem::path p(out);
-  if (!p.has_extension())
-    CONFIG_ERROR(prog_name, "'" + key + "' must have a valid extension", error);
   return true;
 }
 
