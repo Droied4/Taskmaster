@@ -130,8 +130,8 @@ header:
 	@printf "$(NC)\n";
 	@printf "$(RED)══════════════════════════════════════════════════$(WHITE)「₪」$(RED)════════════════════════════════════════════════════$(NC)\n";
 	@echo
-	@printf "$(WHITE)  ᗧ $(RED) DROIED $(WHITE) • • • • • •  $(NC)\n";
-	@printf "$(WHITE)  ᗣ $(BLUE) TUTA $(WHITE) • • • • • • •  $(NC)\n";
+	@printf "$(WHITE)  ᗧ $(RED) DROIED - https://github.com/Droied4 $(WHITE) • • • • • •  $(NC)\n";
+	@printf "$(WHITE)  ᗣ $(BLUE) TUTA - https://github.com/TuTaRdrgZ $(WHITE) • • • • • • $(NC)\n";
 	@echo
 
 .PHONY: all clean fclean re header debug client server
