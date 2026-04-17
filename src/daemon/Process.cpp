@@ -56,12 +56,12 @@ int Process::ptySetup() {
 
   _pty_master = posix_openpt(O_RDWR | O_NOCTTY);
   if (_pty_master < 0) {
-    Logs::error() << "Failed to initialize PTY master for: " << _name << "\n";
+    Logs::error() << "Failed to initialize PTY master for: " << _name << std::endl;
     return -1;
   }
 
   if (grantpt(_pty_master) != 0 || unlockpt(_pty_master) != 0) {
-    Logs::error() << "Failed to grant/unlock PTY for: " << _name << "\n";
+    Logs::error() << "Failed to grant/unlock PTY for: " << _name << std::endl;
     close(_pty_master);
     _pty_master = -1;
     return -1;
@@ -69,7 +69,7 @@ int Process::ptySetup() {
 
   char *slave_name = ptsname(_pty_master);
   if (!slave_name) {
-    Logs::error() << "Failed to get PTY slave name for: " << _name << "\n";
+    Logs::error() << "Failed to get PTY slave name for: " << _name << std::endl;
     close(_pty_master);
     _pty_master = -1;
     return -1;
@@ -77,7 +77,7 @@ int Process::ptySetup() {
 
   int pty_slave = open(slave_name, O_RDWR);
   if (pty_slave < 0) {
-    Logs::error() << "Failed to open PTY slave for: " << _name << "\n";
+    Logs::error() << "Failed to open PTY slave for: " << _name << std::endl;
     close(_pty_master);
     _pty_master = -1;
     return -1;
@@ -112,7 +112,7 @@ bool Process::spawn() {
 
   int error_pipe[2];
   if (pipe(error_pipe) < 0) {
-    Logs::error() << "Failed to create error pipe for: " << _name << "\n";
+    Logs::error() << "Failed to create error pipe for: " << _name << std::endl;
     return false;
   }
 
@@ -128,7 +128,7 @@ bool Process::spawn() {
   _pid = fork();
 
   if (_pid < 0) {
-    Logs::error() << "Fork failed for process: " << _name << "\n";
+    Logs::error() << "Fork failed for process: " << _name << std::endl;
     close(error_pipe[0]);
     close(error_pipe[1]);
     _state = ProcessState::FATAL;
@@ -212,7 +212,7 @@ bool Process::spawn() {
     _status_msg = std::string(strerror(exec_errno)) + ": " + _config.cmd;
     _state = ProcessState::FATAL;
     _end_time = time(NULL);
-    Logs::error() << "[Process] " << _name << ": " << _status_msg << "\n";
+    Logs::error() << "[Process] " << _name << ": " << _status_msg << std::endl;
     return false;
   }
 
@@ -221,26 +221,26 @@ bool Process::spawn() {
   _status_msg = "";
 
   Logs::debug() << "[Process] Spawning " << _name << " with PID " << _pid
-                << "\n";
+                << std::endl;
   return true;
 }
 
 void Process::killProcess() {
 
   Logs::debug() << "[killprocess] " << _name << " state: " << (int)_state
-                << "\n";
+                << std::endl;
   if (_pid > 0 &&
       (_state == ProcessState::RUNNING || _state == ProcessState::STARTING)) {
     Logs::debug() << "[Process] Sending signal " << _config.stopsignal << " to "
-                  << _name << "\n";
+                  << _name << std::endl;
     kill(_pid, _config.stopsignal);
     _state = ProcessState::STOPPING;
     _stop_start_time = time(NULL);
     Logs::debug() << "[Process] " << _name << " killed with signal "
                   << _config.stopsignal << " (stoptime: " << _config.stoptime
-                  << "s)\n";
+                  << "s)" << std::endl;
   } else {
-    Logs::debug() << "[killprocess] skipped (wrong state or no pid)\n";
+    Logs::debug() << "[killprocess] skipped (wrong state or no pid)" << std::endl;
   }
 }
 

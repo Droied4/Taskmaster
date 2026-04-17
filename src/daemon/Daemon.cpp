@@ -55,7 +55,7 @@ void Daemon::handlePTYInput(int client_fd) {
   int pty_fd = _client_to_pty[client_fd];
 
   if (bytes <= 0) {
-    Logs::info() << "[Daemon] Client detached from PTY\n";
+    Logs::info() << "[Daemon] Client detached from PTY" << std::endl;
     epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
     epoll_ctl(_epfd, EPOLL_CTL_DEL, client_fd, nullptr);
     _client_to_pty.erase(client_fd);
@@ -78,7 +78,7 @@ void Daemon::handlePTYOutput(int pty_fd) {
   int client_fd = _pty_to_client[pty_fd];
 
   if (bytes <= 0) {
-    Logs::info() << "[Daemon] Process PTY closed during attach\n";
+    Logs::info() << "[Daemon] Process PTY closed during attach" << std::endl;
     _serv.sendData(client_fd, "\r\n[Process Terminated]\r\n");
     epoll_ctl(_epfd, EPOLL_CTL_DEL, pty_fd, nullptr);
     epoll_ctl(_epfd, EPOLL_CTL_DEL, client_fd, nullptr);
@@ -188,7 +188,7 @@ void Daemon::processClientCommand(int client_fd, const std::string &input) {
     epoll_ctl(_epfd, EPOLL_CTL_ADD, pty_fd, &ev);
 
     Logs::info() << "[Daemon] Client attached to PTY for process: " << proc_name
-                 << "\n";
+                 << std::endl;
 
     _serv.sendData(client_fd, "ATTACH_OK\n", false);
   } else {
@@ -207,7 +207,7 @@ void Daemon::run() {
   struct epoll_event events[EVENTS_SIZE];
   setupSignals();
   signal(SIGPIPE, SIG_IGN);
-  Logs::debug() << "pid: " << getpid() << "\n";
+  Logs::debug() << "pid: " << getpid() << std::endl;
   _manager.startAutostart();
   while (42) {
     int timeout = _is_shutting_down ? 10 : 100;
@@ -233,7 +233,7 @@ void Daemon::run() {
     _manager.reap();
     _manager.updateRunningStates();
     if (_is_shutting_down && !_manager.hasActiveProcesses()) {
-      Logs::info() << "[Daemon] All processes terminated. Exiting cleanly.\n";
+      Logs::info() << "[Daemon] All processes terminated. Exiting cleanly." << std::endl;
       break;
     }
   }

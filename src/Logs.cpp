@@ -76,7 +76,10 @@ Logs &Logs::operator<<(Level level) {
 
 Logs &Logs::operator<<(std::ostream &(*manip)(std::ostream &)) {
   if (_enabled)
+  {
     manip(*_output);
+	_output->flush();
+  }
   return *this;
 }
 
@@ -88,7 +91,7 @@ void Logs::setFile(std::string filename) {
     logger._output = &logger._file;
   else
     Logs::warning() << "path: " << filename
-                    << " not found. Using default output\n";
+                    << " not found. Using default output" << std::endl;
 }
 
 void Logs::closeFile() {

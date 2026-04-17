@@ -12,9 +12,9 @@ Server::Server(int epfd) {
   this->_serv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (this->_serv_fd < 0)
     ERROR("Sever fd socket failed!");
-  Logs::info() << "Server Socket Created\n";
+  Logs::info() << "Server Socket Created" << std::endl;
   Logs::debug() << "Epoll Event created with server fd: " << this->_serv_fd
-                << "\n";
+                << std::endl;
   bzero(&this->_serv_addr, sizeof(this->_serv_addr));
   this->_serv_addr.sun_family = AF_UNIX;
   strncpy(this->_serv_addr.sun_path, this->SOCK_PATH,
@@ -48,23 +48,23 @@ void Server::bindListen() {
                   reinterpret_cast<sockaddr *>(&this->_serv_addr),
                   sizeof(this->_serv_addr)) == 0) {
         close(test);
-        Logs::error() << "Server already running\n";
+        Logs::error() << "Server already running" << std::endl;
         exit(1);
       }
       close(test);
-      Logs::debug() << "Unlinked Sock Path: " << SOCK_PATH << "\n";
+      Logs::debug() << "Unlinked Sock Path: " << SOCK_PATH << std::endl;
       unlink(SOCK_PATH);
       if (bind(this->_serv_fd, reinterpret_cast<sockaddr *>(&this->_serv_addr),
                sizeof(this->_serv_addr)) < 0) {
-        Logs::error() << "Bind failed\n";
+        Logs::error() << "Bind failed" << std::endl;
         exit(1);
       }
     }
   }
-  Logs::info() << "Server binded on route: " << SOCK_PATH << "\n";
+  Logs::info() << "Server binded on route: " << SOCK_PATH << std::endl;
   if (listen(this->_serv_fd, 1) < 0)
     ERROR("Server listen failed!\n");
-  Logs::info() << "Server is now Listening!\n";
+  Logs::info() << "Server is now Listening!" << std::endl;
 }
 
 void Server::sendData(int client_socket, std::string message,
@@ -87,7 +87,7 @@ std::string Server::readData(int fd, int epfd) {
     return ("");
   }
   buffer[bytes] = '\0';
-  Logs::debug() << "Data read: " << buffer << "\n";
+  Logs::debug() << "Data read: " << buffer << std::endl;
   std::string input(buffer);
   return (input);
 }
@@ -97,7 +97,7 @@ void Server::acceptConnection(int epfd) {
 
   client_socket = accept(this->_serv_fd, nullptr, nullptr);
   if (client_socket < 0)
-    ERROR("Accept connection failed!\n");
+    ERROR("Accept connection failed!");
 
   int flags = fcntl(client_socket, F_GETFL, 0);
   fcntl(client_socket, F_SETFL, flags | O_NONBLOCK);

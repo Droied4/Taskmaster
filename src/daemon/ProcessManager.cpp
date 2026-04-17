@@ -12,7 +12,7 @@ ProcessManager::ProcessManager(const std::string &config_path)
   std::map<std::string, ProgramConfig> configs;
   std::string error;
   if (!_parser.parse(_config_path, configs, error)) {
-    Logs::error() << error << "\n";
+    Logs::error() << error << std::endl;
     std::exit(1);
   }
   for (const auto &[name, config] : configs) {
@@ -87,13 +87,13 @@ ProcessManager::executeCommand(const std::string &cmd,
 std::string ProcessManager::reloadConfig() {
   std::string report;
   Logs::info() << "[ProcessManager] Reloading config from: " << _config_path
-               << "\n";
+               << std::endl;
   std::map<std::string, ProgramConfig> new_configs;
 
   std::string error;
   if (!_parser.parse(_config_path, new_configs, error)) {
-    Logs::error() << error << "\n";
-    Logs::warning() << "Keeping existing configuration and running processes\n";
+    Logs::error() << error << std::endl;
+    Logs::warning() << "Keeping existing configuration and running processes" << std::endl;
     return "Error: " + error +
            "Keeping existing configuration and running processes\n";
   }
@@ -104,7 +104,7 @@ std::string ProcessManager::reloadConfig() {
     if (new_configs.find(it->first) == new_configs.end()) {
       it->second->stop();
       _graveyard.push_back(std::move(it->second));
-      report += it->first + ": removed\n";
+      report += it->first + ": removed";
       changed_programs.push_back(it->first);
       it = _programs.erase(it);
     } else {
@@ -116,13 +116,13 @@ std::string ProcessManager::reloadConfig() {
     auto it = _programs.find(name);
     if (it == _programs.end()) {
       _programs[name] = std::make_unique<Program>(name, new_cfg);
-      report += name + ": added\n";
+      report += name + ": added";
       changed_programs.push_back(name);
       if (new_cfg.autostart)
         _programs[name]->start();
     } else {
       if (it->second->getConfig() != new_cfg) {
-        report += name + ": configuration changed\n";
+        report += name + ": configuration changed";
         it->second->stop();
         _graveyard.push_back(std::move(it->second));
         _programs[name] = std::make_unique<Program>(name, new_cfg);
@@ -134,10 +134,10 @@ std::string ProcessManager::reloadConfig() {
   }
 
   if (changed_programs.empty()) {
-    report += "No configuration changes detected\n";
+    report += "No configuration changes detected";
   }
 
-  Logs::info() << report;
+  Logs::info() << report << std::endl;
   return report;
 }
 
@@ -178,7 +178,7 @@ void ProcessManager::handleProcessRestart(Process *proc) {
   if (proc->getRetries() >= config.startretries) {
     Logs::warning() << "[ProcessManager] " << proc->getName()
                     << " reached max retries (" << config.startretries
-                    << "), marking as FATAL\n";
+                    << "), marking as FATAL" << std::endl;
     proc->setState(ProcessState::FATAL);
     proc->setEndTime(time(NULL));
     proc->setStatusMsg("Exited too quickly (process log may have details)");
@@ -189,7 +189,7 @@ void ProcessManager::handleProcessRestart(Process *proc) {
   proc->setStatusMsg("Restarting...");
   Logs::info() << "[ProcessManager] Restarting " << proc->getName()
                << " (retry " << proc->getRetries() << "/" << config.startretries
-               << ")\n";
+               << ")" << std::endl;
   proc->spawn();
 }
 
@@ -210,7 +210,7 @@ void ProcessManager::handleRestartingProcess(Process *proc, Program *prog) {
 
   if (all_stopped) {
     Logs::info() << "[ProcessManager] All processes of " << prog->getName()
-                 << " stopped, relaunching...\n";
+                 << " stopped, relaunching..." << std::endl;
     prog->setRestarting(false);
     prog->start();
   }
@@ -223,7 +223,7 @@ void ProcessManager::reap() {
   while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
     Process *proc = findProcessByPid(pid);
     if (!proc) {
-      Logs::warning() << "[ProcessManager] Reaped unknown PID: " << pid << "\n";
+      Logs::warning() << "[ProcessManager] Reaped unknown PID: " << pid << std::endl;
       continue;
     }
 
@@ -234,13 +234,13 @@ void ProcessManager::reap() {
     if (WIFEXITED(status)) {
       exit_code = WEXITSTATUS(status);
       Logs::info() << "[ProcessManager] " << proc->getName() << " (PID " << pid
-                   << ") exited with code " << exit_code << "\n";
+                   << ") exited with code " << exit_code << std::endl;
     } else if (WIFSIGNALED(status)) {
       was_signaled = true;
       term_sig = WTERMSIG(status);
       exit_code = 128 + term_sig;
       Logs::info() << "[ProcessManager] " << proc->getName() << " (PID " << pid
-                   << ") killed by signal " << term_sig << "\n";
+                   << ") killed by signal " << term_sig << std::endl;
     }
 
     proc->closePty();
@@ -276,7 +276,7 @@ void ProcessManager::reap() {
         proc->setState(ProcessState::EXITED);
         proc->resetRetries();
         Logs::info() << "[ProcessManager] " << proc->getName()
-                     << " exited normally\n";
+                     << " exited normally" << std::endl;
       } else {
         proc->setState(ProcessState::FATAL);
         proc->setStatusMsg(was_signaled
@@ -284,7 +284,7 @@ void ProcessManager::reap() {
                                : "Exited with unexpected code " +
                                      std::to_string(exit_code));
         Logs::warning() << "[ProcessManager] " << proc->getName()
-                        << " failed\n";
+                        << " failed" << std::endl;
       }
     }
   }
@@ -292,7 +292,7 @@ void ProcessManager::reap() {
   for (auto it = _graveyard.begin(); it != _graveyard.end();) {
     if ((*it)->isFullyStopped()) {
       Logs::debug() << "[ProcessManager] Freeing memory for old program: "
-                    << (*it)->getName() << "\n";
+                    << (*it)->getName() << std::endl;
       it = _graveyard.erase(it);
     } else {
       ++it;
@@ -310,13 +310,13 @@ void ProcessManager::updateRunningStates() {
           proc->setState(ProcessState::RUNNING);
           proc->resetRetries();
           Logs::debug() << "[ProcessManager] " << proc->getName()
-                        << " is now RUNNING\n";
+                        << " is now RUNNING" << std::endl;
         }
       } else if (proc->getState() == ProcessState::STOPPING) {
         time_t stop_elapsed = now - proc->getStopStartTime();
         if (stop_elapsed >= proc->getConfig().stoptime) {
           Logs::info() << "[ProcessManager] " << proc->getName()
-                       << " did not stop gracefully, sending SIGKILL\n";
+                       << " did not stop gracefully, sending SIGKILL" << std::endl;
           kill(proc->getPid(), SIGKILL);
           proc->setStopStartTime(now);
         }

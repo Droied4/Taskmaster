@@ -25,14 +25,14 @@ Program::~Program() { _processes.clear(); }
 
 void Program::start() {
   Logs::info() << "[Program] Starting " << _name << " (" << _config.numprocs
-               << " processes)...\n";
+               << " processes)..." << std::endl;
   for (auto &proc : _processes) {
     proc->spawn();
   }
 }
 
 void Program::stop() {
-  Logs::info() << "[Program] Stopping " << _name << "...\n";
+  Logs::info() << "[Program] Stopping " << _name << "..." << std::endl;
   for (auto &proc : _processes) {
     proc->killProcess();
   }
@@ -57,7 +57,7 @@ void Program::restartProcesses(const std::vector<Process *> &procs) {
 }
 
 void Program::restart() {
-  Logs::info() << "[Program] Restarting " << _name << "...\n";
+  Logs::info() << "[Program] Restarting " << _name << "..." << std::endl;
   std::vector<Process *> procs;
   for (auto &proc : _processes) {
     procs.push_back(proc.get());
