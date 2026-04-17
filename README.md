@@ -6,11 +6,11 @@
   <tr>
     <td align="center">
       <img src="https://avatars.githubusercontent.com/u/69441843?v=4" width="150"><br>
-      <b>Droied</b>
+      <a href=https://github.com/Droied4>Droied</a>
     </td>
     <td align="center">
       <img src="https://avatars.githubusercontent.com/u/76682946?v=4" width="150"><br>
-      <b>Tuta</b>
+      <a href=https://github.com/TuTaRdrgZ>Tuta</a>
     </td>
   </tr>
 </table>
