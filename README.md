@@ -70,7 +70,7 @@ taskmaster/
     ├── client/
 ├── config.lua
 ├── LICENSE
-└── README.me
+└── README.md
 ```
 
 ## 🚀 Getting Started
