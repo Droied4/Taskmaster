@@ -19,7 +19,7 @@
 
 
 <p align="center">
-<img src="https://img.shields.io/badge/42-Barcelona-000000?style=flat-square&logo=42&logoColor=white" />
+  <img src="https://img.shields.io/badge/Barcelona-100000?style=flat-square&logo=42&logoColor=white&labelColor=000000&color=000000" alt="42 Barcelona" />
 </p>
 <img src="https://img.shields.io/github/languages/code-size/Droied4/Taskmaster?style=flat-square" />
 <img src="https://img.shields.io/github/languages/top/Droied4/Taskmaster?style=flat-square" />
