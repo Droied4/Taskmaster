@@ -30,7 +30,7 @@ Process::~Process() {
   closePty();
 }
 
-std::vector<std::string> Process::build_envp() const {
+std::vector<std::string> Process::buildEnvp() const {
   std::vector<std::string> env_strings;
   for (const auto &[key, val] : _config.env) {
     env_strings.push_back(key + "=" + val);
@@ -38,7 +38,7 @@ std::vector<std::string> Process::build_envp() const {
   return env_strings;
 }
 
-std::vector<std::string> Process::build_argv() const {
+std::vector<std::string> Process::buildArgv() const {
   std::vector<std::string> argv_strings;
   std::istringstream iss(_config.cmd);
   std::string token;
@@ -48,7 +48,7 @@ std::vector<std::string> Process::build_argv() const {
   return argv_strings;
 }
 
-int Process::ptySetup() {
+int Process::setupPty() {
   if (_pty_master >= 0) {
     close(_pty_master);
     _pty_master = -1;
@@ -86,113 +86,139 @@ int Process::ptySetup() {
   return pty_slave;
 }
 
-bool Process::spawn() {
-  ASSERT(_state == ProcessState::STOPPED || _state == ProcessState::EXITED ||
-             _state == ProcessState::BACKOFF || _state == ProcessState::FATAL,
-         "Attempted to spawn a process that is already active");
+void Process::buildExecVectors(std::vector<std::string> &argv_strings,
+                               std::vector<std::string> &envp_strings,
+                               std::vector<char *> &argv,
+                               std::vector<char *> &envp) const {
+  argv_strings = buildArgv();
+  envp_strings = buildEnvp();
 
-  std::vector<std::string> argv_strings = build_argv();
-  std::vector<std::string> envp_strings = build_envp();
-
-  std::vector<char *> argv;
-
-  for (auto &str : argv_strings) {
+  argv.clear();
+  for (std::string &str : argv_strings) {
     argv.push_back(str.data());
   }
   argv.push_back(nullptr);
 
-  std::vector<char *> envp;
-  for (auto &str : envp_strings) {
+  envp.clear();
+  for (std::string &str : envp_strings) {
     envp.push_back(str.data());
   }
   envp.push_back(nullptr);
 
   ASSERT(argv.size() >= 2, "argv must have at least command and nullptr");
   ASSERT(argv[0] != nullptr, "argv[0] (command) cannot be null");
+}
 
-  int error_pipe[2];
+bool Process::createErrorPipe(int error_pipe[2]) const {
   if (pipe(error_pipe) < 0) {
     Logs::error() << "Failed to create error pipe for: " << _name << std::endl;
     return false;
   }
-
   fcntl(error_pipe[1], F_SETFD, FD_CLOEXEC);
+  return true;
+}
 
-  int pty_slave = ptySetup();
+bool Process::prepareSpawnResources(int error_pipe[2], int &pty_slave) {
+  if (!createErrorPipe(error_pipe)) {
+    return false;
+  }
+
+  pty_slave = setupPty();
   if (pty_slave < 0) {
     close(error_pipe[0]);
     close(error_pipe[1]);
     return false;
   }
 
-  _pid = fork();
+  return true;
+}
 
-  if (_pid < 0) {
-    Logs::error() << "Fork failed for process: " << _name << std::endl;
-    close(error_pipe[0]);
-    close(error_pipe[1]);
-    _state = ProcessState::FATAL;
+void Process::childWriteErrnoAndExit(int error_pipe_write_fd, int err) const {
+  write(error_pipe_write_fd, &err, sizeof(err));
+  _exit(1);
+}
+
+bool Process::setupChildWorkingDirAndUmask(int error_pipe_write_fd) const {
+  umask(_config.umask);
+
+  if (_config.workingdir.empty()) {
+    return true;
+  }
+
+  if (chdir(_config.workingdir.c_str()) < 0) {
+    childWriteErrnoAndExit(error_pipe_write_fd, errno);
     return false;
   }
 
-  if (_pid == 0) {
-    sigset_t empty;
-    sigemptyset(&empty);
-    sigprocmask(SIG_SETMASK, &empty, NULL);
+  return true;
+}
 
-    close(error_pipe[0]);
+bool Process::redirectToFileOrPty(const std::string &path, int pty_slave,
+                                  int target_fd, int error_pipe_write_fd) const {
+  if (path.empty()) {
+    dup2(pty_slave, target_fd);
+    return true;
+  }
 
-    close(_pty_master);
-    setsid();
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+  if (fd < 0) {
+    childWriteErrnoAndExit(error_pipe_write_fd, errno);
+    return false;
+  }
 
-    umask(_config.umask);
+  dup2(fd, target_fd);
+  close(fd);
+  return true;
+}
 
-    if (!_config.workingdir.empty()) {
-      if (chdir(_config.workingdir.c_str()) < 0) {
-        int err = errno;
-        write(error_pipe[1], &err, sizeof(err));
-        _exit(1);
-      }
-    }
+bool Process::setupChildFileDescriptors(int pty_slave, int error_pipe_write_fd) const {
+  dup2(pty_slave, STDIN_FILENO);
 
-    dup2(pty_slave, STDIN_FILENO);
+  if (!redirectToFileOrPty(_config.stdout_path, pty_slave, STDOUT_FILENO,
+                           error_pipe_write_fd)) {
+    return false;
+  }
 
-    if (!_config.stdout_path.empty()) {
-      int fd_out = open(_config.stdout_path.c_str(),
-                        O_WRONLY | O_CREAT | O_APPEND, 0644);
-      if (fd_out < 0) {
-        int err = errno;
-        write(error_pipe[1], &err, sizeof(err));
-        _exit(1);
-      }
-      dup2(fd_out, STDOUT_FILENO);
-      close(fd_out);
-    } else {
-      dup2(pty_slave, STDOUT_FILENO);
-    }
+  if (!redirectToFileOrPty(_config.stderr_path, pty_slave, STDERR_FILENO,
+                           error_pipe_write_fd)) {
+    return false;
+  }
 
-    if (!_config.stderr_path.empty()) {
-      int fd_err = open(_config.stderr_path.c_str(),
-                        O_WRONLY | O_CREAT | O_APPEND, 0644);
-      if (fd_err < 0) {
-        int err = errno;
-        write(error_pipe[1], &err, sizeof(err));
-        _exit(1);
-      }
-      dup2(fd_err, STDERR_FILENO);
-      close(fd_err);
-    } else {
-      dup2(pty_slave, STDERR_FILENO);
-    }
+  return true;
+}
 
-    close(pty_slave);
-    execvpe(argv[0], argv.data(), envp.data());
+void Process::runChildProcess(int error_pipe[2], int pty_slave, char *const argv[],
+                              char *const envp[]) {
+  sigset_t empty;
+  sigemptyset(&empty);
+  sigprocmask(SIG_SETMASK, &empty, NULL);
 
-    int err = errno;
-    write(error_pipe[1], &err, sizeof(err));
+  close(error_pipe[0]);
+  close(_pty_master);
+  setsid();
+
+  if (!setupChildWorkingDirAndUmask(error_pipe[1])) {
     _exit(1);
   }
 
+  if (!setupChildFileDescriptors(pty_slave, error_pipe[1])) {
+    _exit(1);
+  }
+
+  close(pty_slave);
+  execvpe(argv[0], argv, envp);
+  childWriteErrnoAndExit(error_pipe[1], errno);
+}
+
+bool Process::handleExecFailure(int exec_errno) {
+  _status_msg = std::string(strerror(exec_errno)) + ": " + _config.cmd;
+  _state = ProcessState::FATAL;
+  _end_time = time(NULL);
+  Logs::error() << "[Process] " << _name << ": " << _status_msg << std::endl;
+  return false;
+}
+
+bool Process::finalizeParentSpawn(int error_pipe[2], int pty_slave) {
   close(error_pipe[1]);
   close(pty_slave);
 
@@ -204,15 +230,45 @@ bool Process::spawn() {
   close(error_pipe[0]);
 
   if (n > 0) {
-    std::string cmd_name = _config.cmd;
-    size_t space_pos = cmd_name.find(' ');
-    if (space_pos != std::string::npos) {
-      cmd_name = cmd_name.substr(0, space_pos);
-    }
-    _status_msg = std::string(strerror(exec_errno)) + ": " + _config.cmd;
+    return handleExecFailure(exec_errno);
+  }
+
+  return true;
+}
+
+bool Process::spawn() {
+  ASSERT(_state == ProcessState::STOPPED || _state == ProcessState::EXITED ||
+             _state == ProcessState::BACKOFF || _state == ProcessState::FATAL,
+         "Attempted to spawn a process that is already active");
+
+  std::vector<std::string> argv_strings;
+  std::vector<std::string> envp_strings;
+  std::vector<char *> argv;
+  std::vector<char *> envp;
+  buildExecVectors(argv_strings, envp_strings, argv, envp);
+
+  int error_pipe[2];
+  int pty_slave = -1;
+  if (!prepareSpawnResources(error_pipe, pty_slave)) {
+    return false;
+  }
+
+  _pid = fork();
+
+  if (_pid < 0) {
+    Logs::error() << "Fork failed for process: " << _name << std::endl;
+    close(error_pipe[0]);
+    close(error_pipe[1]);
+    close(pty_slave);
     _state = ProcessState::FATAL;
-    _end_time = time(NULL);
-    Logs::error() << "[Process] " << _name << ": " << _status_msg << std::endl;
+    return false;
+  }
+
+  if (_pid == 0) {
+    runChildProcess(error_pipe, pty_slave, argv.data(), envp.data());
+  }
+
+  if (!finalizeParentSpawn(error_pipe, pty_slave)) {
     return false;
   }
 

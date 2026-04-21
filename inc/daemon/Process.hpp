@@ -26,8 +26,23 @@ private:
   time_t _end_time;
   time_t _stop_start_time;
 
-  std::vector<std::string> build_envp() const;
-  std::vector<std::string> build_argv() const;
+  std::vector<std::string> buildEnvp() const;
+  std::vector<std::string> buildArgv() const;
+  void buildExecVectors(std::vector<std::string> &argv_strings,
+                        std::vector<std::string> &envp_strings,
+                        std::vector<char *> &argv,
+                        std::vector<char *> &envp) const;
+  bool createErrorPipe(int error_pipe[2]) const;
+  bool prepareSpawnResources(int error_pipe[2], int &pty_slave);
+  void childWriteErrnoAndExit(int error_pipe_write_fd, int err) const;
+  bool setupChildWorkingDirAndUmask(int error_pipe_write_fd) const;
+  bool redirectToFileOrPty(const std::string &path, int pty_slave, int target_fd,
+                           int error_pipe_write_fd) const;
+  bool setupChildFileDescriptors(int pty_slave, int error_pipe_write_fd) const;
+  void runChildProcess(int error_pipe[2], int pty_slave, char *const argv[],
+                       char *const envp[]);
+  bool handleExecFailure(int exec_errno);
+  bool finalizeParentSpawn(int error_pipe[2], int pty_slave);
 
 public:
   Process(const std::string &name, const std::string &program_name,
@@ -60,7 +75,7 @@ public:
   void resetStopStartTime();
   void incrementRetries();
   void resetRetries();
-  int ptySetup();
+  int setupPty();
   void closePty();
   int getPtyMaster() const;
 };
