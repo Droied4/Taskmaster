@@ -1,6 +1,7 @@
 #include "Daemon.hpp"
 #include "Logs.hpp"
 #include <getopt.h>
+#include <unistd.h>
 
 static void help(void) {
   std::cout << "\
@@ -86,10 +87,41 @@ static struct Config flagCases(int ac, char *av[]) {
   return conf;
 }
 
+bool deescalate_privileges(const char* target_user) {
+    struct passwd* pwd = getpwnam(target_user);
+    if (!pwd) {
+		Logs::error() << "User: \'" << target_user << "\' Not Found." << std::endl;
+        return false;
+    }
+
+    uid_t target_uid = pwd->pw_uid;
+    gid_t target_gid = pwd->pw_gid;
+
+    if (setgid(target_gid) != 0) {
+		Logs::error() << "Change GID Failed" << std::endl;
+        return false;
+    }
+
+    if (setuid(target_uid) != 0) {
+		Logs::error() << "Change UID Failed." << std::endl;
+        return false;
+    }
+
+    if (setuid(0) == 0 || getuid() == 0)
+	{
+        Logs::error() << "¡Security breach! de-escalation failed." << std::endl;
+        return false;
+	}
+    return true;
+}
+
 int main(int ac, char *av[]) {
-
-  Daemon daemon(flagCases(ac, av));
-
-  daemon.run();
-  return 0;
+	if (getuid() != 0) {
+		Logs::error() << "Must be init as root" << std::endl;
+		return 1;
+	}
+	Daemon daemon(flagCases(ac, av));
+	if (deescalate_privileges(std::getenv("USER")));
+		daemon.run();
+	return 0;
 }
