@@ -1,0 +1,13 @@
+FROM alpine:3.18
+
+RUN apk update && apk add --no-cache \
+    build-base \
+    cmake \
+	lua5.4-dev \
+	bash \
+	g++
+
+RUN mkdir /app
+WORKDIR /app
+
+CMD ["tail", "-f", "/dev/null"]

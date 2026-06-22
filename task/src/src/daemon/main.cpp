@@ -2,6 +2,8 @@
 #include "Logs.hpp"
 #include <getopt.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 static void help(void) {
   std::cout << "\
@@ -121,7 +123,7 @@ int main(int ac, char *av[]) {
 		return 1;
 	}
 	Daemon daemon(flagCases(ac, av));
-	if (deescalate_privileges(std::getenv("USER")));
+	if (deescalate_privileges(std::getenv("USER")))
 		daemon.run();
 	return 0;
 }

@@ -1,0 +1,15 @@
+networks:
+  app-network: {}
+
+services:
+  taskmaster:
+    container_name: taskmaster
+    build: 
+      context: 
+       ./task/ 
+    image: taskmaster 
+    networks:
+      - app-network 
+    volumes:
+      - ./task/src/:/app/
+    restart: unless-stopped

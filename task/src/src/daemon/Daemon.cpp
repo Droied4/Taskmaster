@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <unistd.h>
+#include <sys/ioctl.h> 
 
 Daemon::Daemon(struct Config conf)
     : _epfd(epoll_create1(EPOLL_CLOEXEC)), _sig_fd(-1), _daemon(conf.daemonize),
