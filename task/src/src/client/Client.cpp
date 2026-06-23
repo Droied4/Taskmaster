@@ -11,6 +11,7 @@
 #include <sys/un.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 Client::Client(const std::string &socket_path) : _socket_path(socket_path) {}
 

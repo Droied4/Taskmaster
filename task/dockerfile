@@ -4,9 +4,11 @@ RUN apk update && apk add --no-cache \
     build-base \
     cmake \
 	lua5.4-dev \
+	readline-dev \
 	bash \
 	g++
 
+RUN adduser -D -g "" taskmaster
 RUN mkdir /app
 WORKDIR /app
 

@@ -11,7 +11,7 @@ CFLAGS = -Wall -Wextra -Werror -std=c++23 -MMD -MP
 #CFLAGS += -fsanitize=address,leak,undefined -g
 
 LUA_INC = -I/usr/include/lua5.4
-LDFLAGS = -L/usr/lib/lua5.4 -llua5.4
+LDFLAGS = -L /usr/lua5.4/lib -llua
 SHELL := /bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════════╗ #  

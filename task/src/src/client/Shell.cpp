@@ -4,6 +4,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <sstream>
+#include <algorithm>
 
 Shell *Shell::instance = nullptr;
 

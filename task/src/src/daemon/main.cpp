@@ -123,7 +123,7 @@ int main(int ac, char *av[]) {
 		return 1;
 	}
 	Daemon daemon(flagCases(ac, av));
-	if (deescalate_privileges(std::getenv("USER")))
+	if (deescalate_privileges("taskmaster"))
 		daemon.run();
 	return 0;
 }
